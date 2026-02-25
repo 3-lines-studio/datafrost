@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"sync"
 
 	"github.com/3-lines-studio/bifrost"
 	webview "github.com/webview/webview_go"
@@ -94,17 +93,7 @@ func main() {
 	w.SetSize(1200, 800, webview.HintNone)
 	w.Navigate(localURL)
 
-	var quitOnce sync.Once
-	quit := make(chan struct{})
-
-	go func() {
-		w.Run()
-		quitOnce.Do(func() {
-			close(quit)
-		})
-	}()
-
-	<-quit
+	w.Run()
 
 	if err := server.Shutdown(context.Background()); err != nil {
 		log.Printf("Server shutdown error: %v", err)
