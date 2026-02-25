@@ -22,3 +22,14 @@ export interface ConnectionsResponse {
   connections: Connection[];
   last_id: number;
 }
+
+export interface UpdateConnectionRequest {
+  name: string;
+  url: string;
+  token: string;
+}
+
+export interface TestConnectionRequest {
+  url: string;
+  token: string;
+}

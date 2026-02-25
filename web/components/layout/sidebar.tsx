@@ -2,9 +2,13 @@ import {
   Database,
   Plus,
   Trash2,
+  Pencil,
+  Activity,
   ChevronRight,
   ChevronDown,
   Table,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
@@ -16,10 +20,14 @@ interface SidebarProps {
   selectedConnection: number | null;
   selectedTable: string | null;
   lastId: number;
+  theme: "light" | "dark";
   onSelectConnection: (id: number) => void;
   onSelectTable: (name: string) => void;
   onAddConnection: () => void;
+  onEditConnection: (id: number) => void;
   onDeleteConnection: (id: number) => void;
+  onTestConnection: (id: number) => void;
+  onToggleTheme: () => void;
 }
 
 export function Sidebar({
@@ -28,13 +36,17 @@ export function Sidebar({
   selectedConnection,
   selectedTable,
   lastId,
+  theme,
   onSelectConnection,
   onSelectTable,
   onAddConnection,
+  onEditConnection,
   onDeleteConnection,
+  onTestConnection,
+  onToggleTheme,
 }: SidebarProps) {
   return (
-    <div className="w-64 h-full border-r border-zinc-200 dark:border-zinc-800 flex flex-col bg-zinc-50 dark:bg-zinc-950">
+    <div className="h-full border-r border-zinc-200 dark:border-zinc-800 flex flex-col bg-zinc-50 dark:bg-zinc-950">
       <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -63,7 +75,7 @@ export function Sidebar({
               <div key={conn.id}>
                 <div
                   className={`
-                    flex items-center justify-between px-2 py-2 rounded-md cursor-pointer text-sm
+                    group flex items-center justify-between px-2 py-2 rounded-md cursor-pointer text-sm
                     ${
                       selectedConnection === conn.id
                         ? "bg-zinc-200 dark:bg-zinc-800"
@@ -90,17 +102,41 @@ export function Sidebar({
                       <span className="text-xs text-blue-500">&#8226;</span>
                     )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:opacity-100"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteConnection(conn.id);
-                    }}
-                  >
-                    <Trash2 className="h-3 w-3 text-zinc-500" />
-                  </Button>
+                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTestConnection(conn.id);
+                      }}
+                    >
+                      <Activity className="h-3 w-3 text-zinc-500" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditConnection(conn.id);
+                      }}
+                    >
+                      <Pencil className="h-3 w-3 text-zinc-500" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteConnection(conn.id);
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3 text-zinc-500" />
+                    </Button>
+                  </div>
                 </div>
 
                 {selectedConnection === conn.id && tables?.length > 0 && (
@@ -129,6 +165,21 @@ export function Sidebar({
           )}
         </div>
       </ScrollArea>
+
+      <div className="p-2 border-t border-zinc-200 dark:border-zinc-800">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onToggleTheme}
+          className="h-8 w-8"
+        >
+          {theme === "light" ? (
+            <Moon className="h-4 w-4" />
+          ) : (
+            <Sun className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

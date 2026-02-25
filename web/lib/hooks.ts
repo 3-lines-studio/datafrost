@@ -53,6 +53,43 @@ const setLastConnectedApi = async (id: number): Promise<void> => {
   if (!res.ok) throw new Error("Failed to set last connected");
 };
 
+const updateConnectionApi = async (
+  id: number,
+  data: { name: string; url: string; token: string },
+): Promise<void> => {
+  const res = await fetch(`${API_BASE}/api/connections/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update connection");
+};
+
+const testConnectionApi = async (data: {
+  url: string;
+  token: string;
+}): Promise<void> => {
+  const res = await fetch(`${API_BASE}/api/connections/test`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Connection test failed");
+  }
+};
+
+const testExistingConnectionApi = async (id: number): Promise<void> => {
+  const res = await fetch(`${API_BASE}/api/connections/${id}/test`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Connection test failed");
+  }
+};
+
 const executeQueryApi = async (
   connectionId: number,
   query: string,
@@ -125,11 +162,66 @@ export function useSetLastConnectedMutation() {
   });
 }
 
+export function useUpdateConnectionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { name: string; url: string; token: string } }) =>
+      updateConnectionApi(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["connections"] });
+    },
+  });
+}
+
+export function useTestConnectionMutation() {
+  return useMutation({
+    mutationFn: testConnectionApi,
+  });
+}
+
+export function useTestExistingConnectionMutation() {
+  return useMutation({
+    mutationFn: testExistingConnectionApi,
+  });
+}
+
 export function useExecuteQueryMutation(connectionId: number | null) {
   return useMutation({
     mutationFn: (query: string) => {
       if (!connectionId) throw new Error("No connection selected");
       return executeQueryApi(connectionId, query);
+    },
+  });
+}
+
+const fetchTheme = async (): Promise<{ theme: string }> => {
+  const res = await fetch(`${API_BASE}/api/theme`);
+  if (!res.ok) throw new Error("Failed to fetch theme");
+  return res.json();
+};
+
+const updateThemeApi = async (theme: string): Promise<void> => {
+  const res = await fetch(`${API_BASE}/api/theme`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ theme }),
+  });
+  if (!res.ok) throw new Error("Failed to update theme");
+};
+
+export function useThemeQuery() {
+  return useQuery({
+    queryKey: ["theme"],
+    queryFn: fetchTheme,
+  });
+}
+
+export function useUpdateThemeMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateThemeApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["theme"] });
     },
   });
 }

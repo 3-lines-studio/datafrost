@@ -16,6 +16,17 @@ type CreateConnectionRequest struct {
 	Token string `json:"token"`
 }
 
+type UpdateConnectionRequest struct {
+	Name  string `json:"name"`
+	URL   string `json:"url"`
+	Token string `json:"token"`
+}
+
+type TestConnectionRequest struct {
+	URL   string `json:"url"`
+	Token string `json:"token"`
+}
+
 type TableInfo struct {
 	Name string `json:"name"`
 	Type string `json:"type"`

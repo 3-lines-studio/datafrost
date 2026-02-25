@@ -3,6 +3,7 @@ package handlers
 import (
 	"datafrost/internal/db"
 	"datafrost/internal/models"
+	"datafrost/internal/turso"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -86,4 +87,83 @@ func (h *ConnectionsHandler) SetLastConnected(w http.ResponseWriter, r *http.Req
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *ConnectionsHandler) Update(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		JSONError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+
+	var req models.UpdateConnectionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		JSONError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if req.Name == "" || req.URL == "" {
+		JSONError(w, http.StatusBadRequest, "name and url are required")
+		return
+	}
+
+	conn, err := h.store.Update(id, req)
+	if err != nil {
+		JSONError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	JSONResponse(w, http.StatusOK, conn)
+}
+
+func (h *ConnectionsHandler) Test(w http.ResponseWriter, r *http.Request) {
+	var req models.TestConnectionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		JSONError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if req.URL == "" {
+		JSONError(w, http.StatusBadRequest, "url is required")
+		return
+	}
+
+	client, err := turso.NewClient(req.URL, req.Token)
+	if err != nil {
+		JSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer client.Close()
+
+	JSONResponse(w, http.StatusOK, map[string]bool{"success": true})
+}
+
+func (h *ConnectionsHandler) TestExisting(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		JSONError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+
+	conn, err := h.store.GetByID(id)
+	if err != nil {
+		JSONError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if conn == nil {
+		JSONError(w, http.StatusNotFound, "connection not found")
+		return
+	}
+
+	client, err := turso.NewClient(conn.URL, conn.Token)
+	if err != nil {
+		JSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer client.Close()
+
+	JSONResponse(w, http.StatusOK, map[string]bool{"success": true})
 }

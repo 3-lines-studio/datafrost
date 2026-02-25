@@ -44,6 +44,7 @@ func main() {
 	connectionsHandler := handlers.NewConnectionsHandler(connectionStore)
 	tablesHandler := handlers.NewTablesHandler(connectionStore)
 	queryHandler := handlers.NewQueryHandler(connectionStore)
+	themeHandler := handlers.NewThemeHandler(configDB.DB())
 
 	apiRouter.Route("/api", func(r chi.Router) {
 		r.Route("/connections", func(r chi.Router) {
@@ -51,12 +52,17 @@ func main() {
 			r.Post("/", connectionsHandler.Create)
 			r.Route("/{id}", func(r chi.Router) {
 				r.Delete("/", connectionsHandler.Delete)
+				r.Put("/", connectionsHandler.Update)
 				r.Post("/select", connectionsHandler.SetLastConnected)
+				r.Post("/test", connectionsHandler.TestExisting)
 				r.Get("/tables", tablesHandler.List)
 				r.Get("/tables/{name}", tablesHandler.GetData)
 				r.Post("/query", queryHandler.Execute)
 			})
+			r.Post("/test", connectionsHandler.Test)
 		})
+		r.Get("/theme", themeHandler.Get)
+		r.Post("/theme", themeHandler.Update)
 	})
 
 	app := bifrost.New(

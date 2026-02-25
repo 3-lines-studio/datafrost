@@ -77,6 +77,18 @@ func (s *ConnectionStore) Delete(id int64) error {
 	return nil
 }
 
+func (s *ConnectionStore) Update(id int64, req models.UpdateConnectionRequest) (*models.Connection, error) {
+	_, err := s.db.Exec(
+		"UPDATE connections SET name = ?, url = ?, token = ? WHERE id = ?",
+		req.Name, req.URL, req.Token, id,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update connection: %w", err)
+	}
+
+	return s.GetByID(id)
+}
+
 func (s *ConnectionStore) SetLastConnected(id int64) error {
 	_, err := s.db.Exec(
 		"INSERT INTO app_state (key, value) VALUES ('last_connected_id', ?) ON CONFLICT(key) DO UPDATE SET value = ?",
