@@ -46,7 +46,7 @@ jobs:
 
       - name: Build Go binary
         run: |
-          go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o datafrost main.go
+          go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o datafrost .
 
       - name: Create Linux package
         run: |
@@ -101,7 +101,7 @@ jobs:
 
       - name: Build ARM64 binary
         run: |
-          go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o datafrost main.go
+          go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o datafrost .
 
       - name: Create macOS package
         run: |
