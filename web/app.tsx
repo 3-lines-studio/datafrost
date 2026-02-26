@@ -91,6 +91,7 @@ function PageContent() {
     closeTab,
     updateTab,
     setTabPage,
+    setTabFilters,
     clearSelection,
   } = useAppStore();
 
@@ -159,6 +160,7 @@ function PageContent() {
     selectedConnection,
     activeTab?.type === "table" ? activeTab.tableName || null : null,
     activeTab?.type === "table" ? activeTab.page || 1 : 1,
+    activeTab?.type === "table" ? activeTab.filters || [] : [],
   );
 
   useEffect(() => {
@@ -588,7 +590,8 @@ function PageContent() {
           result={currentTabResult?.result || null}
           loading={currentTabResult?.loading || tablesLoading}
           error={currentTabResult?.error || null}
-          page={activeTab.page || 1}
+          filters={activeTab.filters}
+          onFiltersChange={(filters) => setTabFilters(activeTab.id, filters)}
           onPageChange={(page) => setTabPage(activeTab.id, page)}
         />
       );

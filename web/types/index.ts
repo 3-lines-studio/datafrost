@@ -46,6 +46,7 @@ export interface Tab {
   tableName?: string;
   query?: string;
   page?: number;
+  filters?: ColumnFilter[];
 }
 
 export interface SavedQuery {
@@ -55,4 +56,23 @@ export interface SavedQuery {
   query: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type FilterOperator =
+  | "eq"
+  | "neq"
+  | "gt"
+  | "lt"
+  | "gte"
+  | "lte"
+  | "like"
+  | "not_like"
+  | "is_null"
+  | "is_not_null";
+
+export interface ColumnFilter {
+  id: string;
+  column: string;
+  operator: FilterOperator;
+  value: string;
 }

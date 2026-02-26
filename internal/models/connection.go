@@ -40,3 +40,10 @@ type QueryResult struct {
 	Page    int      `json:"page"`
 	Limit   int      `json:"limit"`
 }
+
+type Filter struct {
+	ID       string `json:"id"`
+	Column   string `json:"column"`
+	Operator string `json:"operator"`
+	Value    string `json:"value"`
+}

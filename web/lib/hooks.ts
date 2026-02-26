@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ConnectionsResponse, QueryResult, TableInfo, SavedQuery } from "../types";
+import type { ConnectionsResponse, QueryResult, TableInfo, SavedQuery, ColumnFilter } from "../types";
 
 const API_BASE = "";
 
@@ -19,10 +19,15 @@ const fetchTableData = async (
   connectionId: number,
   tableName: string,
   page: number = 1,
+  filters: ColumnFilter[] = [],
 ): Promise<QueryResult> => {
   const params = new URLSearchParams();
   params.set("page", page.toString());
   params.set("limit", "25");
+
+  if (filters.length > 0) {
+    params.set("filters", JSON.stringify(filters));
+  }
 
   const res = await fetch(
     `${API_BASE}/api/connections/${connectionId}/tables/${encodeURIComponent(tableName)}?${params.toString()}`,
@@ -130,10 +135,11 @@ export function useTableDataQuery(
   connectionId: number | null,
   tableName: string | null,
   page: number = 1,
+  filters: ColumnFilter[] = [],
 ) {
   return useQuery({
-    queryKey: ["tableData", connectionId, tableName, page],
-    queryFn: () => fetchTableData(connectionId!, tableName!, page),
+    queryKey: ["tableData", connectionId, tableName, page, filters],
+    queryFn: () => fetchTableData(connectionId!, tableName!, page, filters),
     enabled: !!connectionId && !!tableName,
   });
 }

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { QueryResult, Tab } from "../types";
+import type { ColumnFilter, QueryResult, Tab } from "../types";
 
 type Theme = "light" | "dark";
 
@@ -22,6 +22,7 @@ interface AppState {
   closeTab: (id: string) => void;
   updateTab: (id: string, updates: Partial<Tab>) => void;
   setTabPage: (id: string, page: number) => void;
+  setTabFilters: (id: string, filters: ColumnFilter[]) => void;
   getTab: (id: string) => Tab | undefined;
   findTabByTable: (connectionId: number, tableName: string) => Tab | undefined;
   clearSelection: () => void;
@@ -84,6 +85,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     const state = get();
     set({
       tabs: state.tabs.map((t) => (t.id === id ? { ...t, page } : t)),
+      hasTabsChanged: true,
+    });
+  },
+  setTabFilters: (id, filters) => {
+    const state = get();
+    set({
+      tabs: state.tabs.map((t) =>
+        t.id === id ? { ...t, filters, page: 1 } : t
+      ),
       hasTabsChanged: true,
     });
   },

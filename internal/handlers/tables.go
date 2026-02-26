@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"datafrost/internal/db"
+	"datafrost/internal/models"
 	"datafrost/internal/turso"
 	"encoding/json"
 	"net/http"
@@ -102,9 +103,18 @@ func (h *TablesHandler) GetData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var filters []models.Filter
+	filtersStr := r.URL.Query().Get("filters")
+	if filtersStr != "" {
+		if err := json.Unmarshal([]byte(filtersStr), &filters); err != nil {
+			JSONError(w, http.StatusBadRequest, "invalid filters parameter")
+			return
+		}
+	}
+
 	offset := (page - 1) * limit
 
-	result, err := client.GetTableData(tableName, limit, offset)
+	result, err := client.GetTableData(tableName, limit, offset, filters)
 	if err != nil {
 		JSONError(w, http.StatusInternalServerError, err.Error())
 		return
