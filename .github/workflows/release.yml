@@ -66,7 +66,7 @@ jobs:
           name: linux-package
           path: datafrost-linux-*.tar.gz
 
-  build-macos:
+  build-macos-arm64:
     runs-on: macos-14
     steps:
       - name: Checkout
@@ -99,47 +99,25 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION"
 
-      - name: Build AMD64 binary
-        run: |
-          GOARCH=amd64 go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o datafrost-amd64 main.go
-
       - name: Build ARM64 binary
         run: |
-          GOARCH=arm64 go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o datafrost-arm64 main.go
-
-      - name: Create universal binary
-        run: |
-          chmod +x datafrost-amd64 datafrost-arm64
-          lipo -create datafrost-amd64 datafrost-arm64 -output datafrost
+          go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o datafrost main.go
 
       - name: Create macOS package
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
-          PKG_DIR="datafrost-macos-v${VERSION}"
+          PKG_DIR="datafrost-macos-arm64-v${VERSION}"
           mkdir -p "$PKG_DIR"
           cp datafrost "$PKG_DIR/"
-          echo "Datafrost ${VERSION} - Database Management GUI" > "$PKG_DIR/README.txt"
-          echo "" >> "$PKG_DIR/README.txt"
-          echo "INSTALLATION:" >> "$PKG_DIR/README.txt"
-          echo "1. Copy binary to a directory in your PATH:" >> "$PKG_DIR/README.txt"
-          echo "   sudo cp datafrost /usr/local/bin/" >> "$PKG_DIR/README.txt"
-          echo "   chmod +x /usr/local/bin/datafrost" >> "$PKG_DIR/README.txt"
-          echo "" >> "$PKG_DIR/README.txt"
-          echo "2. On first run, macOS may show a security warning because the app is unsigned:" >> "$PKG_DIR/README.txt"
-          echo "   - Go to System Preferences > Security & Privacy" >> "$PKG_DIR/README.txt"
-          echo '   - Click "Open Anyway"' >> "$PKG_DIR/README.txt"
-          echo "" >> "$PKG_DIR/README.txt"
-          echo "USAGE:" >> "$PKG_DIR/README.txt"
-          echo "Run: datafrost" >> "$PKG_DIR/README.txt"
-          echo "" >> "$PKG_DIR/README.txt"
-          echo "This universal binary works on both Intel and Apple Silicon Macs." >> "$PKG_DIR/README.txt"
+          cp build/macos/README.txt "$PKG_DIR/"
+          sed -i '' "s/VERSION_PLACEHOLDER/${VERSION}/g" "$PKG_DIR/README.txt"
           tar -czf "${PKG_DIR}.tar.gz" "$PKG_DIR"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: macos-package
-          path: datafrost-macos-*.tar.gz
+          path: datafrost-macos-arm64-*.tar.gz
 
   build-windows:
     runs-on: windows-2022
@@ -211,7 +189,7 @@ jobs:
           path: datafrost-windows-*.zip
 
   create-release:
-    needs: [build-linux, build-macos, build-windows]
+    needs: [build-linux, build-macos-arm64, build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -252,8 +230,9 @@ jobs:
             - Requires: libwebkit2gtk-4.0, libgtk-3
 
             **macOS**
-            - Download `datafrost-macos-v${{ steps.version.outputs.VERSION }}.tar.gz`
-            - Universal binary (Intel and Apple Silicon)
+            - Download `datafrost-macos-arm64-v${{ steps.version.outputs.VERSION }}.tar.gz`
+            - Apple Silicon only (M1, M2, M3, or later)
+            - Intel Macs: Build from source (see README)
             - Unsigned: Allow in System Preferences > Security on first run
 
             **Windows**
