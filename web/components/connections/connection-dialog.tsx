@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Eye, EyeOff, Loader2, Check, X, FileJson } from "lucide-react";
-import type { Connection, AdapterInfo, FieldConfig, UIMode } from "../../types";
+import type { Connection, AdapterInfo, FieldConfig, UIMode } from "@/types";
 
 interface ConnectionDialogProps {
   open: boolean;
@@ -21,7 +21,11 @@ interface ConnectionDialogProps {
   connection?: Connection;
   adapters: AdapterInfo[];
   adaptersLoading: boolean;
-  onSave: (name: string, type: string, credentials: Record<string, any>) => Promise<void>;
+  onSave: (
+    name: string,
+    type: string,
+    credentials: Record<string, any>,
+  ) => Promise<void>;
   onTest: (type: string, credentials: Record<string, any>) => Promise<void>;
   testLoading: boolean;
 }
@@ -49,10 +53,16 @@ export function ConnectionDialog({
   const [fileError, setFileError] = useState<string | null>(null);
 
   const selectedAdapter = adapters.find((a) => a.type === selectedType);
-  const hasMultipleModes = selectedAdapter?.ui_config.modes && selectedAdapter.ui_config.modes.length > 0;
-  const selectedMode = credentials.mode || (hasMultipleModes ? selectedAdapter?.ui_config.modes?.[0]?.key : undefined);
+  const hasMultipleModes =
+    selectedAdapter?.ui_config.modes &&
+    selectedAdapter.ui_config.modes.length > 0;
+  const selectedMode =
+    credentials.mode ||
+    (hasMultipleModes ? selectedAdapter?.ui_config.modes?.[0]?.key : undefined);
   const currentMode = hasMultipleModes
-    ? selectedAdapter?.ui_config.modes?.find((m: UIMode) => m.key === selectedMode)
+    ? selectedAdapter?.ui_config.modes?.find(
+        (m: UIMode) => m.key === selectedMode,
+      )
     : undefined;
 
   useEffect(() => {
@@ -113,7 +123,10 @@ export function ConnectionDialog({
     setCredentials((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, fieldKey: string) => {
+  const handleFileUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+    fieldKey: string,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -216,14 +229,20 @@ export function ConnectionDialog({
   };
 
   const fieldsToValidate = getFieldsToValidate();
-  const canTest = selectedType && fieldsToValidate.every((f: FieldConfig) => !f.required || credentials[f.key]);
+  const canTest =
+    selectedType &&
+    fieldsToValidate.every(
+      (f: FieldConfig) => !f.required || credentials[f.key],
+    );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {mode === "add" ? "Add Database Connection" : "Edit Database Connection"}
+            {mode === "add"
+              ? "Add Database Connection"
+              : "Edit Database Connection"}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSave} className="space-y-4 pt-4">
@@ -261,7 +280,9 @@ export function ConnectionDialog({
               </SelectContent>
             </Select>
             {selectedAdapter && (
-              <p className="text-xs text-gray-500">{selectedAdapter.description}</p>
+              <p className="text-xs text-gray-500">
+                {selectedAdapter.description}
+              </p>
             )}
           </div>
 
@@ -299,7 +320,10 @@ export function ConnectionDialog({
 
                 {selectedAdapter.ui_config.supports_file && (
                   <div className="mt-4">
-                    <Label htmlFor="file-upload" className="flex items-center gap-2 cursor-pointer">
+                    <Label
+                      htmlFor="file-upload"
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
                       <FileJson className="h-4 w-4" />
                       Upload JSON File
                     </Label>
@@ -308,10 +332,15 @@ export function ConnectionDialog({
                       type="file"
                       accept={selectedAdapter.ui_config.file_types?.join(",")}
                       onChange={(e) => {
-                        const allFields = selectedAdapter.ui_config.modes
-                          ?.flatMap((m: UIMode) => m.fields)
-                          || selectedAdapter.ui_config.fields || [];
-                        const credField = allFields.find((f: FieldConfig) => f.key === "credentials");
+                        const allFields =
+                          selectedAdapter.ui_config.modes?.flatMap(
+                            (m: UIMode) => m.fields,
+                          ) ||
+                          selectedAdapter.ui_config.fields ||
+                          [];
+                        const credField = allFields.find(
+                          (f: FieldConfig) => f.key === "credentials",
+                        );
                         if (credField) {
                           handleFileUpload(e, credField.key);
                         }
@@ -359,10 +388,17 @@ export function ConnectionDialog({
               )}
             </Button>
             <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={saveLoading || !name || !selectedType}>
+              <Button
+                type="submit"
+                disabled={saveLoading || !name || !selectedType}
+              >
                 {saveLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />

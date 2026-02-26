@@ -9,7 +9,7 @@ import type {
   CreateConnectionRequest,
   UpdateConnectionRequest,
   TestConnectionRequest,
-} from "../types";
+} from "@/types";
 
 const API_BASE = "";
 
@@ -52,7 +52,9 @@ const fetchTableData = async (
   return res.json();
 };
 
-const createConnectionApi = async (data: CreateConnectionRequest): Promise<void> => {
+const createConnectionApi = async (
+  data: CreateConnectionRequest,
+): Promise<void> => {
   const res = await fetch(`${API_BASE}/api/connections`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -75,7 +77,10 @@ const setLastConnectedApi = async (id: number): Promise<void> => {
   if (!res.ok) throw new Error("Failed to set last connected");
 };
 
-const updateConnectionApi = async (id: number, data: UpdateConnectionRequest): Promise<void> => {
+const updateConnectionApi = async (
+  id: number,
+  data: UpdateConnectionRequest,
+): Promise<void> => {
   const res = await fetch(`${API_BASE}/api/connections/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -84,7 +89,9 @@ const updateConnectionApi = async (id: number, data: UpdateConnectionRequest): P
   if (!res.ok) throw new Error("Failed to update connection");
 };
 
-const testConnectionApi = async (data: TestConnectionRequest): Promise<void> => {
+const testConnectionApi = async (
+  data: TestConnectionRequest,
+): Promise<void> => {
   const res = await fetch(`${API_BASE}/api/connections/test`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -106,7 +113,10 @@ const testExistingConnectionApi = async (id: number): Promise<void> => {
   }
 };
 
-const executeQueryApi = async (connectionId: number, query: string): Promise<QueryResult> => {
+const executeQueryApi = async (
+  connectionId: number,
+  query: string,
+): Promise<QueryResult> => {
   const res = await fetch(`${API_BASE}/api/connections/${connectionId}/query`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -273,14 +283,15 @@ export function useLayoutQuery(key: string) {
 export function useSaveLayoutMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ key, layout }: { key: string; layout: string }) => saveLayoutApi(key, layout),
+    mutationFn: ({ key, layout }: { key: string; layout: string }) =>
+      saveLayoutApi(key, layout),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["layout", variables.key] });
     },
   });
 }
 
-import type { Tab } from "../types";
+import type { Tab } from "@/types";
 
 const fetchTabs = async (connectionId: number): Promise<{ tabs: Tab[] }> => {
   const res = await fetch(`${API_BASE}/api/connections/${connectionId}/tabs`);
@@ -288,7 +299,10 @@ const fetchTabs = async (connectionId: number): Promise<{ tabs: Tab[] }> => {
   return res.json();
 };
 
-const saveTabsApi = async (connectionId: number, tabs: Tab[]): Promise<void> => {
+const saveTabsApi = async (
+  connectionId: number,
+  tabs: Tab[],
+): Promise<void> => {
   const res = await fetch(`${API_BASE}/api/connections/${connectionId}/tabs`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -307,13 +321,22 @@ export function useTabsQuery(connectionId: number | null) {
 
 export function useSaveTabsMutation() {
   return useMutation({
-    mutationFn: ({ connectionId, tabs }: { connectionId: number; tabs: Tab[] }) =>
-      saveTabsApi(connectionId, tabs),
+    mutationFn: ({
+      connectionId,
+      tabs,
+    }: {
+      connectionId: number;
+      tabs: Tab[];
+    }) => saveTabsApi(connectionId, tabs),
   });
 }
 
-const fetchSavedQueries = async (connectionId: number): Promise<{ queries: SavedQuery[] }> => {
-  const res = await fetch(`${API_BASE}/api/connections/${connectionId}/queries`);
+const fetchSavedQueries = async (
+  connectionId: number,
+): Promise<{ queries: SavedQuery[] }> => {
+  const res = await fetch(
+    `${API_BASE}/api/connections/${connectionId}/queries`,
+  );
   if (!res.ok) throw new Error("Failed to fetch saved queries");
   return res.json();
 };
@@ -323,11 +346,14 @@ const createSavedQueryApi = async (
   name: string,
   query: string,
 ): Promise<SavedQuery> => {
-  const res = await fetch(`${API_BASE}/api/connections/${connectionId}/queries`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, query }),
-  });
+  const res = await fetch(
+    `${API_BASE}/api/connections/${connectionId}/queries`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, query }),
+    },
+  );
   if (!res.ok) throw new Error("Failed to create saved query");
   return res.json();
 };
@@ -338,19 +364,28 @@ const updateSavedQueryApi = async (
   name: string,
   query: string,
 ): Promise<SavedQuery> => {
-  const res = await fetch(`${API_BASE}/api/connections/${connectionId}/queries/${queryId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, query }),
-  });
+  const res = await fetch(
+    `${API_BASE}/api/connections/${connectionId}/queries/${queryId}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, query }),
+    },
+  );
   if (!res.ok) throw new Error("Failed to update saved query");
   return res.json();
 };
 
-const deleteSavedQueryApi = async (connectionId: number, queryId: number): Promise<void> => {
-  const res = await fetch(`${API_BASE}/api/connections/${connectionId}/queries/${queryId}`, {
-    method: "DELETE",
-  });
+const deleteSavedQueryApi = async (
+  connectionId: number,
+  queryId: number,
+): Promise<void> => {
+  const res = await fetch(
+    `${API_BASE}/api/connections/${connectionId}/queries/${queryId}`,
+    {
+      method: "DELETE",
+    },
+  );
   if (!res.ok) throw new Error("Failed to delete saved query");
 };
 
@@ -375,7 +410,9 @@ export function useCreateSavedQueryMutation() {
       query: string;
     }) => createSavedQueryApi(connectionId, name, query),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["savedQueries", variables.connectionId] });
+      queryClient.invalidateQueries({
+        queryKey: ["savedQueries", variables.connectionId],
+      });
     },
   });
 }
@@ -395,7 +432,9 @@ export function useUpdateSavedQueryMutation() {
       query: string;
     }) => updateSavedQueryApi(connectionId, queryId, name, query),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["savedQueries", variables.connectionId] });
+      queryClient.invalidateQueries({
+        queryKey: ["savedQueries", variables.connectionId],
+      });
     },
   });
 }
@@ -403,10 +442,17 @@ export function useUpdateSavedQueryMutation() {
 export function useDeleteSavedQueryMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ connectionId, queryId }: { connectionId: number; queryId: number }) =>
-      deleteSavedQueryApi(connectionId, queryId),
+    mutationFn: ({
+      connectionId,
+      queryId,
+    }: {
+      connectionId: number;
+      queryId: number;
+    }) => deleteSavedQueryApi(connectionId, queryId),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["savedQueries", variables.connectionId] });
+      queryClient.invalidateQueries({
+        queryKey: ["savedQueries", variables.connectionId],
+      });
     },
   });
 }

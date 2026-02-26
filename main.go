@@ -12,8 +12,8 @@ import (
 	"github.com/3-lines-studio/bifrost"
 	webview "github.com/webview/webview_go"
 
-	"datafrost/internal/db"
-	"datafrost/internal/handlers"
+	"github.com/3-lines-studio/datafrost/internal/db"
+	"github.com/3-lines-studio/datafrost/internal/handlers"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"

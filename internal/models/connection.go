@@ -3,7 +3,7 @@ package models
 import "time"
 
 type DatabaseAdapter interface {
-	Connect(credentials map[string]interface{}) error
+	Connect(credentials map[string]any) error
 	Close() error
 	ListTables() ([]TableInfo, error)
 	GetTableData(tableName string, limit, offset int, filters []Filter) (*QueryResult, error)
@@ -17,28 +17,28 @@ type AdapterRegistration struct {
 }
 
 type Connection struct {
-	ID          int64                  `json:"id"`
-	Name        string                 `json:"name"`
-	Type        string                 `json:"type"`
-	Credentials map[string]interface{} `json:"credentials"`
-	CreatedAt   time.Time              `json:"created_at"`
+	ID          int64          `json:"id"`
+	Name        string         `json:"name"`
+	Type        string         `json:"type"`
+	Credentials map[string]any `json:"credentials"`
+	CreatedAt   time.Time      `json:"created_at"`
 }
 
 type CreateConnectionRequest struct {
-	Name        string                 `json:"name"`
-	Type        string                 `json:"type"`
-	Credentials map[string]interface{} `json:"credentials"`
+	Name        string         `json:"name"`
+	Type        string         `json:"type"`
+	Credentials map[string]any `json:"credentials"`
 }
 
 type UpdateConnectionRequest struct {
-	Name        string                 `json:"name"`
-	Type        string                 `json:"type"`
-	Credentials map[string]interface{} `json:"credentials"`
+	Name        string         `json:"name"`
+	Type        string         `json:"type"`
+	Credentials map[string]any `json:"credentials"`
 }
 
 type TestConnectionRequest struct {
-	Type        string                 `json:"type"`
-	Credentials map[string]interface{} `json:"credentials"`
+	Type        string         `json:"type"`
+	Credentials map[string]any `json:"credentials"`
 }
 
 type TableInfo struct {

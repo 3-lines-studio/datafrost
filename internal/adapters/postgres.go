@@ -3,10 +3,11 @@ package adapters
 import (
 	"context"
 	"database/sql"
-	"datafrost/internal/models"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/3-lines-studio/datafrost/internal/models"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -94,7 +95,7 @@ func NewPostgresAdapterRegistration() models.AdapterRegistration {
 	}
 }
 
-func (a *PostgresAdapter) Connect(credentials map[string]interface{}) error {
+func (a *PostgresAdapter) Connect(credentials map[string]any) error {
 	mode, _ := credentials["mode"].(string)
 
 	var connStr string
@@ -216,7 +217,7 @@ func (a *PostgresAdapter) ExecuteQuery(query string) (*models.QueryResult, error
 	return a.executeQueryWithArgs(query, nil)
 }
 
-func (a *PostgresAdapter) executeQueryWithArgs(query string, args []interface{}) (*models.QueryResult, error) {
+func (a *PostgresAdapter) executeQueryWithArgs(query string, args []any) (*models.QueryResult, error) {
 	upperQuery := strings.ToUpper(strings.TrimSpace(query))
 	isSelect := strings.HasPrefix(upperQuery, "SELECT") || strings.HasPrefix(upperQuery, "WITH")
 
@@ -265,7 +266,7 @@ func (a *PostgresAdapter) executeQueryWithArgs(query string, args []interface{})
 	}, nil
 }
 
-func (a *PostgresAdapter) getFilteredTableCount(tableName, whereClause string, args []interface{}) (int, error) {
+func (a *PostgresAdapter) getFilteredTableCount(tableName, whereClause string, args []any) (int, error) {
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM \"%s\"", tableName)
 	if whereClause != "" {
 		countQuery += " WHERE " + whereClause
@@ -278,13 +279,13 @@ func (a *PostgresAdapter) getFilteredTableCount(tableName, whereClause string, a
 	return count, nil
 }
 
-func buildPostgresWhereClause(filters []models.Filter) (string, []interface{}) {
+func buildPostgresWhereClause(filters []models.Filter) (string, []any) {
 	if len(filters) == 0 {
 		return "", nil
 	}
 
 	var conditions []string
-	var args []interface{}
+	var args []any
 	argIndex := 1
 
 	for _, filter := range filters {

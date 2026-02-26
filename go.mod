@@ -1,10 +1,10 @@
-module datafrost
+module github.com/3-lines-studio/datafrost
 
 go 1.25.6
 
 require (
 	cloud.google.com/go/bigquery v1.74.0
-	github.com/3-lines-studio/bifrost v0.1.9
+	github.com/3-lines-studio/bifrost v0.1.10
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-chi/cors v1.2.2
 	github.com/jackc/pgx/v5 v5.8.0
@@ -13,8 +13,6 @@ require (
 	github.com/webview/webview_go v0.0.0-20240831120633-6173450d4dd6
 	google.golang.org/api v0.269.0
 )
-
-replace github.com/3-lines-studio/bifrost => /home/berti/Code/3lines/bifrost
 
 require (
 	cloud.google.com/go v0.123.0 // indirect

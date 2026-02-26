@@ -17,8 +17,8 @@
     "jsxImportSource": "react",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./web/*"],
-    },
+      "@/*": ["./web/*"]
+    }
   },
-  "exclude": ["node_modules", ".bifrost"],
+  "exclude": ["node_modules", ".bifrost"]
 }

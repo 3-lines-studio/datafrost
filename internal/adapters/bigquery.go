@@ -2,9 +2,10 @@ package adapters
 
 import (
 	"context"
-	"datafrost/internal/models"
 	"fmt"
 	"strings"
+
+	"github.com/3-lines-studio/datafrost/internal/models"
 
 	"cloud.google.com/go/bigquery"
 	"google.golang.org/api/option"
@@ -56,7 +57,7 @@ func NewBigQueryAdapterRegistration() models.AdapterRegistration {
 	}
 }
 
-func (a *BigQueryAdapter) Connect(credentials map[string]interface{}) error {
+func (a *BigQueryAdapter) Connect(credentials map[string]any) error {
 	projectID, ok := credentials["project_id"].(string)
 	if !ok || projectID == "" {
 		return fmt.Errorf("project_id is required")
@@ -225,6 +226,10 @@ func (a *BigQueryAdapter) executeQueryWithCount(query string) (*models.QueryResu
 		resultRows = append(resultRows, convertedRow)
 	}
 
+	if len(columns) == 0 {
+		columns = a.getFallbackColumns(ctx, query, resultRows)
+	}
+
 	return &models.QueryResult{
 		Columns: columns,
 		Rows:    resultRows,
@@ -256,13 +261,13 @@ func convertBigQueryValue(val bigquery.Value) any {
 	}
 }
 
-func buildBigQueryWhereClause(filters []models.Filter) (string, []interface{}) {
+func buildBigQueryWhereClause(filters []models.Filter) (string, []any) {
 	if len(filters) == 0 {
 		return "", nil
 	}
 
 	var conditions []string
-	var args []interface{}
+	var args []any
 
 	for _, filter := range filters {
 		if filter.Column == "" {
@@ -298,4 +303,84 @@ func buildBigQueryWhereClause(filters []models.Filter) (string, []interface{}) {
 	}
 
 	return strings.Join(conditions, " AND "), args
+}
+
+func (a *BigQueryAdapter) getFallbackColumns(ctx context.Context, query string, resultRows [][]any) []string {
+	tableName := extractTableNameFromQuery(query)
+	if tableName != "" {
+		columns, err := a.getColumnsFromInfoSchema(ctx, tableName)
+		if err == nil && len(columns) > 0 {
+			return columns
+		}
+	}
+
+	if len(resultRows) > 0 {
+		columns := make([]string, len(resultRows[0]))
+		for i := range columns {
+			columns[i] = fmt.Sprintf("col_%d", i)
+		}
+		return columns
+	}
+
+	return []string{}
+}
+
+func extractTableNameFromQuery(query string) string {
+	upperQuery := strings.ToUpper(strings.TrimSpace(query))
+
+	if strings.HasPrefix(upperQuery, "SELECT") {
+		fromIndex := strings.Index(upperQuery, " FROM ")
+		if fromIndex == -1 {
+			return ""
+		}
+
+		afterFrom := strings.TrimSpace(query[fromIndex+6:])
+
+		endIndex := len(afterFrom)
+		for _, keyword := range []string{" WHERE ", " GROUP ", " ORDER ", " LIMIT ", " HAVING ", " JOIN ", " UNION ", " INTERSECT ", " EXCEPT "} {
+			idx := strings.Index(strings.ToUpper(afterFrom), keyword)
+			if idx != -1 && idx < endIndex {
+				endIndex = idx
+			}
+		}
+
+		tablePart := strings.TrimSpace(afterFrom[:endIndex])
+		tablePart = strings.Trim(tablePart, "`\"'")
+
+		if strings.Contains(tablePart, ",") || strings.Contains(tablePart, "(") {
+			return ""
+		}
+
+		parts := strings.Split(tablePart, ".")
+		return parts[len(parts)-1]
+	}
+
+	return ""
+}
+
+func (a *BigQueryAdapter) getColumnsFromInfoSchema(ctx context.Context, tableName string) ([]string, error) {
+	infoQuery := fmt.Sprintf(
+		"SELECT column_name FROM `%s.%s.INFORMATION_SCHEMA.COLUMNS` WHERE table_name = '%s' ORDER BY ordinal_position",
+		a.projectID, a.dataset, tableName,
+	)
+
+	q := a.client.Query(infoQuery)
+	it, err := q.Read(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var columns []string
+	for {
+		var row []bigquery.Value
+		err := it.Next(&row)
+		if err != nil {
+			break
+		}
+		if len(row) > 0 && row[0] != nil {
+			columns = append(columns, fmt.Sprintf("%v", row[0]))
+		}
+	}
+
+	return columns, nil
 }

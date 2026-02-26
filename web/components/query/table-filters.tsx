@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { ChevronDown, Plus, X } from "lucide-react";
-import type { ColumnFilter, FilterOperator } from "../../types";
+import type { ColumnFilter, FilterOperator } from "@/types";
 
 interface TableFiltersProps {
   columns: string[];
@@ -86,9 +86,13 @@ export function TableFilters({
             className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md text-sm"
           >
             <span className="font-medium">{filter.column}</span>
-            <span className="text-gray-500">{getOperatorLabel(filter.operator)}</span>
+            <span className="text-gray-500">
+              {getOperatorLabel(filter.operator)}
+            </span>
             {needsValue(filter.operator) && (
-              <span className="text-gray-700 dark:text-gray-300">{filter.value}</span>
+              <span className="text-gray-700 dark:text-gray-300">
+                {filter.value}
+              </span>
             )}
             <button
               onClick={() => removeFilter(filter.id)}
@@ -175,7 +179,10 @@ export function TableFilters({
           <Button
             size="xs"
             onClick={addFilter}
-            disabled={!newFilterColumn || (needsValue(newFilterOperator) && !newFilterValue)}
+            disabled={
+              !newFilterColumn ||
+              (needsValue(newFilterOperator) && !newFilterValue)
+            }
           >
             Add
           </Button>

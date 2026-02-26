@@ -393,7 +393,7 @@ function PageContent() {
   const handleSaveConnection = async (
     name: string,
     type: string,
-    credentials: Record<string, any>
+    credentials: Record<string, any>,
   ) => {
     if (dialogMode === "add") {
       await createMutation.mutateAsync({ name, type, credentials });
@@ -684,7 +684,9 @@ function PageContent() {
           adapters={adapters || []}
           adaptersLoading={adaptersLoading}
           onSave={handleSaveConnection}
-          onTest={(type, credentials) => testMutation.mutateAsync({ type, credentials })}
+          onTest={(type, credentials) =>
+            testMutation.mutateAsync({ type, credentials })
+          }
           testLoading={testMutation.isPending}
         />
 

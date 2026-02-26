@@ -8,7 +8,7 @@ import {
   TableRow,
 } from "../ui/table";
 
-import type { QueryResult } from "../../types";
+import type { QueryResult } from "@/types";
 
 interface ResultsTableProps {
   result: QueryResult | null;

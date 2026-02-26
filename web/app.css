@@ -150,6 +150,10 @@
   html {
     @apply font-sans;
   }
+  ::selection {
+    background: var(--primary);
+    color: white;
+  }
 }
 
 code[class*="language-"],

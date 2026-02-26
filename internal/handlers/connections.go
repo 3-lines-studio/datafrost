@@ -1,12 +1,13 @@
 package handlers
 
 import (
-	"datafrost/internal/adapters"
-	"datafrost/internal/db"
-	"datafrost/internal/models"
 	"encoding/json"
 	"net/http"
 	"strconv"
+
+	"github.com/3-lines-studio/datafrost/internal/adapters"
+	"github.com/3-lines-studio/datafrost/internal/db"
+	"github.com/3-lines-studio/datafrost/internal/models"
 
 	"github.com/go-chi/chi/v5"
 )

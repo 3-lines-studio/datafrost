@@ -10,7 +10,7 @@ import {
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import type { SavedQuery } from "../../types";
+import type { SavedQuery } from "@/types";
 
 interface RenameQueryDialogProps {
   open: boolean;

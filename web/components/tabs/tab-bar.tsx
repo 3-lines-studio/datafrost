@@ -1,6 +1,6 @@
 import { X, Plus, Table, FileCode, Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
-import type { Tab, TabType } from "../../types";
+import type { Tab, TabType } from "@/types";
 
 interface TabBarProps {
   tabs: Tab[];
@@ -29,7 +29,7 @@ export function TabBar({
   onNewQueryTab,
 }: TabBarProps) {
   return (
-    <div className="flex items-center border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950">
+    <div className="flex items-center border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 h-9">
       <div className="flex-1 overflow-x-auto scrollbar-hide">
         <div className="flex items-center">
           {isLoading && tabs.length === 0 && (

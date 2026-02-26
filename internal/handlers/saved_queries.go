@@ -1,10 +1,11 @@
 package handlers
 
 import (
-	"datafrost/internal/db"
 	"encoding/json"
 	"net/http"
 	"strconv"
+
+	"github.com/3-lines-studio/datafrost/internal/db"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -31,7 +32,7 @@ func (h *SavedQueriesHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	JSONResponse(w, http.StatusOK, map[string]interface{}{"queries": queries})
+	JSONResponse(w, http.StatusOK, map[string]any{"queries": queries})
 }
 
 func (h *SavedQueriesHandler) Create(w http.ResponseWriter, r *http.Request) {

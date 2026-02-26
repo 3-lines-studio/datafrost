@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ColumnFilter, QueryResult, Tab } from "../types";
+import type { ColumnFilter, QueryResult, Tab } from "@/types";
 
 type Theme = "light" | "dark";
 
@@ -45,7 +45,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   resetTabsChanged: () => set({ hasTabsChanged: false }),
   addTab: (tab) => {
     const state = get();
-    const existingTab = state.findTabByTable(tab.connectionId, tab.tableName || "");
+    const existingTab = state.findTabByTable(
+      tab.connectionId,
+      tab.tableName || "",
+    );
     if (existingTab && tab.type === "table") {
       set({ activeTabId: existingTab.id });
       return;
@@ -63,7 +66,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (state.activeTabId === id) {
       const closedIndex = state.tabs.findIndex((t) => t.id === id);
       if (newTabs.length > 0) {
-        newActiveId = newTabs[Math.min(closedIndex, newTabs.length - 1)]?.id || null;
+        newActiveId =
+          newTabs[Math.min(closedIndex, newTabs.length - 1)]?.id || null;
       } else {
         newActiveId = null;
       }
@@ -92,7 +96,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const state = get();
     set({
       tabs: state.tabs.map((t) =>
-        t.id === id ? { ...t, filters, page: 1 } : t
+        t.id === id ? { ...t, filters, page: 1 } : t,
       ),
       hasTabsChanged: true,
     });
@@ -102,9 +106,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   findTabByTable: (connectionId, tableName) => {
     return get().tabs.find(
-      (t) => t.type === "table" && t.connectionId === connectionId && t.tableName === tableName,
+      (t) =>
+        t.type === "table" &&
+        t.connectionId === connectionId &&
+        t.tableName === tableName,
     );
   },
-  clearSelection: () =>
-    set({ selectedConnection: null, showAddDialog: false }),
+  clearSelection: () => set({ selectedConnection: null, showAddDialog: false }),
 }));

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"datafrost/internal/models"
+	"github.com/3-lines-studio/datafrost/internal/models"
 
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )

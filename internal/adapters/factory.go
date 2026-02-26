@@ -1,9 +1,10 @@
 package adapters
 
 import (
-	"datafrost/internal/models"
 	"encoding/json"
 	"fmt"
+
+	"github.com/3-lines-studio/datafrost/internal/models"
 )
 
 type Factory struct {
@@ -50,7 +51,7 @@ func (f *Factory) ListAdapters() []models.AdapterInfo {
 	return infos
 }
 
-func (f *Factory) TestConnection(adapterType string, credentials map[string]interface{}) error {
+func (f *Factory) TestConnection(adapterType string, credentials map[string]any) error {
 	adapter, err := f.GetAdapter(adapterType)
 	if err != nil {
 		return err
@@ -64,7 +65,7 @@ func (f *Factory) TestConnection(adapterType string, credentials map[string]inte
 	return adapter.Ping()
 }
 
-func SerializeCredentials(credentials map[string]interface{}) (string, error) {
+func SerializeCredentials(credentials map[string]any) (string, error) {
 	data, err := json.Marshal(credentials)
 	if err != nil {
 		return "", fmt.Errorf("failed to serialize credentials: %w", err)
@@ -72,8 +73,8 @@ func SerializeCredentials(credentials map[string]interface{}) (string, error) {
 	return string(data), nil
 }
 
-func DeserializeCredentials(data string) (map[string]interface{}, error) {
-	var credentials map[string]interface{}
+func DeserializeCredentials(data string) (map[string]any, error) {
+	var credentials map[string]any
 	if err := json.Unmarshal([]byte(data), &credentials); err != nil {
 		return nil, fmt.Errorf("failed to deserialize credentials: %w", err)
 	}

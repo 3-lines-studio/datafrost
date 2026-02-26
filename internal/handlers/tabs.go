@@ -39,7 +39,7 @@ func (h *TabsHandler) Get(w http.ResponseWriter, r *http.Request) {
 	var value string
 	err = h.db.QueryRow("SELECT value FROM app_state WHERE key = ?", key).Scan(&value)
 	if err == sql.ErrNoRows {
-		JSONResponse(w, http.StatusOK, map[string]interface{}{"tabs": []Tab{}})
+		JSONResponse(w, http.StatusOK, map[string]any{"tabs": []Tab{}})
 		return
 	} else if err != nil {
 		JSONError(w, http.StatusInternalServerError, "Failed to get tabs")
@@ -48,11 +48,11 @@ func (h *TabsHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	var tabs []Tab
 	if err := json.Unmarshal([]byte(value), &tabs); err != nil {
-		JSONResponse(w, http.StatusOK, map[string]interface{}{"tabs": []Tab{}})
+		JSONResponse(w, http.StatusOK, map[string]any{"tabs": []Tab{}})
 		return
 	}
 
-	JSONResponse(w, http.StatusOK, map[string]interface{}{"tabs": tabs})
+	JSONResponse(w, http.StatusOK, map[string]any{"tabs": tabs})
 }
 
 func (h *TabsHandler) Save(w http.ResponseWriter, r *http.Request) {
@@ -88,5 +88,5 @@ func (h *TabsHandler) Save(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	JSONResponse(w, http.StatusOK, map[string]interface{}{"tabs": req.Tabs})
+	JSONResponse(w, http.StatusOK, map[string]any{"tabs": req.Tabs})
 }

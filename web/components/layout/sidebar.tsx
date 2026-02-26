@@ -20,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import type { Connection, TableInfo, SavedQuery } from "../../types";
+import type { Connection, TableInfo, SavedQuery } from "@/types";
 import { SavedQueriesSection } from "../queries/saved-queries-section";
 
 interface SidebarProps {

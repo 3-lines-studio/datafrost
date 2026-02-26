@@ -5,7 +5,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "../ui/resizable";
-import type { QueryResult } from "../../types";
+import type { QueryResult } from "@/types";
 
 interface QueryTabProps {
   query: string;

@@ -3,9 +3,10 @@ package adapters
 import (
 	"context"
 	"database/sql"
-	"datafrost/internal/models"
 	"fmt"
 	"strings"
+
+	"github.com/3-lines-studio/datafrost/internal/models"
 
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
@@ -46,7 +47,7 @@ func NewTursoAdapterRegistration() models.AdapterRegistration {
 	}
 }
 
-func (a *TursoAdapter) Connect(credentials map[string]interface{}) error {
+func (a *TursoAdapter) Connect(credentials map[string]any) error {
 	url, ok := credentials["url"].(string)
 	if !ok || url == "" {
 		return fmt.Errorf("url is required")
@@ -137,7 +138,7 @@ func (a *TursoAdapter) ExecuteQuery(query string) (*models.QueryResult, error) {
 	return a.executeQueryWithArgs(query, nil)
 }
 
-func (a *TursoAdapter) executeQueryWithArgs(query string, args []interface{}) (*models.QueryResult, error) {
+func (a *TursoAdapter) executeQueryWithArgs(query string, args []any) (*models.QueryResult, error) {
 	upperQuery := strings.ToUpper(strings.TrimSpace(query))
 	isSelect := strings.HasPrefix(upperQuery, "SELECT") || strings.HasPrefix(upperQuery, "WITH") || strings.HasPrefix(upperQuery, "PRAGMA")
 
@@ -186,7 +187,7 @@ func (a *TursoAdapter) executeQueryWithArgs(query string, args []interface{}) (*
 	}, nil
 }
 
-func (a *TursoAdapter) getFilteredTableCount(tableName, whereClause string, args []interface{}) (int, error) {
+func (a *TursoAdapter) getFilteredTableCount(tableName, whereClause string, args []any) (int, error) {
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM \"%s\"", tableName)
 	if whereClause != "" {
 		countQuery += " WHERE " + whereClause
@@ -199,13 +200,13 @@ func (a *TursoAdapter) getFilteredTableCount(tableName, whereClause string, args
 	return count, nil
 }
 
-func buildTursoWhereClause(filters []models.Filter) (string, []interface{}) {
+func buildTursoWhereClause(filters []models.Filter) (string, []any) {
 	if len(filters) == 0 {
 		return "", nil
 	}
 
 	var conditions []string
-	var args []interface{}
+	var args []any
 
 	for _, filter := range filters {
 		if filter.Column == "" {

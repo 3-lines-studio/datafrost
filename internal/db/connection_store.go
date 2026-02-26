@@ -2,9 +2,10 @@ package db
 
 import (
 	"database/sql"
-	"datafrost/internal/adapters"
-	"datafrost/internal/models"
 	"fmt"
+
+	"github.com/3-lines-studio/datafrost/internal/adapters"
+	"github.com/3-lines-studio/datafrost/internal/models"
 )
 
 type ConnectionStore struct {

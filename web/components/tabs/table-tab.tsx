@@ -1,6 +1,6 @@
 import { ResultsTable } from "../query/results-table";
 import { TableFilters } from "../query/table-filters";
-import type { QueryResult, ColumnFilter } from "../../types";
+import type { QueryResult, ColumnFilter } from "@/types";
 
 interface TableTabProps {
   result: QueryResult | null;

@@ -1,6 +1,6 @@
 import { FileCode, Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
-import type { SavedQuery } from "../../types";
+import type { SavedQuery } from "@/types";
 
 interface SavedQueriesSectionProps {
   queries: SavedQuery[];
