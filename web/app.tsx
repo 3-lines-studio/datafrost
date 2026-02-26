@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/resizable";
 import {
   useConnectionsQuery,
+  useAdaptersQuery,
   useTablesQuery,
   useTableDataQuery,
   useExecuteQueryMutation,
@@ -139,6 +140,7 @@ function PageContent() {
 
   const { data: connectionsData, isLoading: connectionsLoading } =
     useConnectionsQuery();
+  const { data: adapters, isLoading: adaptersLoading } = useAdaptersQuery();
   const { data: tables, isLoading: tablesLoading } =
     useTablesQuery(selectedConnection);
   const executeMutation = useExecuteQueryMutation(selectedConnection);
@@ -390,15 +392,15 @@ function PageContent() {
 
   const handleSaveConnection = async (
     name: string,
-    url: string,
-    token: string,
+    type: string,
+    credentials: Record<string, any>
   ) => {
     if (dialogMode === "add") {
-      await createMutation.mutateAsync({ name, url, token });
+      await createMutation.mutateAsync({ name, type, credentials });
     } else if (dialogMode === "edit" && editingConnection) {
       await updateMutation.mutateAsync({
         id: editingConnection.id,
-        data: { name, url, token },
+        data: { name, type, credentials },
       });
     }
   };
@@ -679,8 +681,10 @@ function PageContent() {
           onOpenChange={setShowAddDialog}
           mode={dialogMode}
           connection={editingConnection}
+          adapters={adapters || []}
+          adaptersLoading={adaptersLoading}
           onSave={handleSaveConnection}
-          onTest={(url, token) => testMutation.mutateAsync({ url, token })}
+          onTest={(type, credentials) => testMutation.mutateAsync({ type, credentials })}
           testLoading={testMutation.isPending}
         />
 

@@ -75,6 +75,7 @@ func main() {
 			})
 			r.Post("/test", connectionsHandler.Test)
 		})
+		r.Get("/adapters", connectionsHandler.ListAdapters)
 		r.Get("/theme", themeHandler.Get)
 		r.Post("/theme", themeHandler.Update)
 		r.Get("/layouts/{key}", layoutHandler.Get)

@@ -1,11 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ConnectionsResponse, QueryResult, TableInfo, SavedQuery, ColumnFilter } from "../types";
+import type {
+  ConnectionsResponse,
+  QueryResult,
+  TableInfo,
+  SavedQuery,
+  ColumnFilter,
+  AdapterInfo,
+  CreateConnectionRequest,
+  UpdateConnectionRequest,
+  TestConnectionRequest,
+} from "../types";
 
 const API_BASE = "";
 
 const fetchConnections = async (): Promise<ConnectionsResponse> => {
   const res = await fetch(`${API_BASE}/api/connections`);
   if (!res.ok) throw new Error("Failed to fetch connections");
+  return res.json();
+};
+
+const fetchAdapters = async (): Promise<AdapterInfo[]> => {
+  const res = await fetch(`${API_BASE}/api/adapters`);
+  if (!res.ok) throw new Error("Failed to fetch adapters");
   return res.json();
 };
 
@@ -36,11 +52,7 @@ const fetchTableData = async (
   return res.json();
 };
 
-const createConnectionApi = async (data: {
-  name: string;
-  url: string;
-  token: string;
-}): Promise<void> => {
+const createConnectionApi = async (data: CreateConnectionRequest): Promise<void> => {
   const res = await fetch(`${API_BASE}/api/connections`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -63,10 +75,7 @@ const setLastConnectedApi = async (id: number): Promise<void> => {
   if (!res.ok) throw new Error("Failed to set last connected");
 };
 
-const updateConnectionApi = async (
-  id: number,
-  data: { name: string; url: string; token: string },
-): Promise<void> => {
+const updateConnectionApi = async (id: number, data: UpdateConnectionRequest): Promise<void> => {
   const res = await fetch(`${API_BASE}/api/connections/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -75,10 +84,7 @@ const updateConnectionApi = async (
   if (!res.ok) throw new Error("Failed to update connection");
 };
 
-const testConnectionApi = async (data: {
-  url: string;
-  token: string;
-}): Promise<void> => {
+const testConnectionApi = async (data: TestConnectionRequest): Promise<void> => {
   const res = await fetch(`${API_BASE}/api/connections/test`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -100,10 +106,7 @@ const testExistingConnectionApi = async (id: number): Promise<void> => {
   }
 };
 
-const executeQueryApi = async (
-  connectionId: number,
-  query: string,
-): Promise<QueryResult> => {
+const executeQueryApi = async (connectionId: number, query: string): Promise<QueryResult> => {
   const res = await fetch(`${API_BASE}/api/connections/${connectionId}/query`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -120,6 +123,13 @@ export function useConnectionsQuery() {
   return useQuery({
     queryKey: ["connections"],
     queryFn: fetchConnections,
+  });
+}
+
+export function useAdaptersQuery() {
+  return useQuery({
+    queryKey: ["adapters"],
+    queryFn: fetchAdapters,
   });
 }
 
@@ -177,7 +187,7 @@ export function useSetLastConnectedMutation() {
 export function useUpdateConnectionMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { name: string; url: string; token: string } }) =>
+    mutationFn: ({ id, data }: { id: number; data: UpdateConnectionRequest }) =>
       updateConnectionApi(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["connections"] });
@@ -263,8 +273,7 @@ export function useLayoutQuery(key: string) {
 export function useSaveLayoutMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ key, layout }: { key: string; layout: string }) =>
-      saveLayoutApi(key, layout),
+    mutationFn: ({ key, layout }: { key: string; layout: string }) => saveLayoutApi(key, layout),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["layout", variables.key] });
     },
@@ -309,7 +318,11 @@ const fetchSavedQueries = async (connectionId: number): Promise<{ queries: Saved
   return res.json();
 };
 
-const createSavedQueryApi = async (connectionId: number, name: string, query: string): Promise<SavedQuery> => {
+const createSavedQueryApi = async (
+  connectionId: number,
+  name: string,
+  query: string,
+): Promise<SavedQuery> => {
   const res = await fetch(`${API_BASE}/api/connections/${connectionId}/queries`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -319,7 +332,12 @@ const createSavedQueryApi = async (connectionId: number, name: string, query: st
   return res.json();
 };
 
-const updateSavedQueryApi = async (connectionId: number, queryId: number, name: string, query: string): Promise<SavedQuery> => {
+const updateSavedQueryApi = async (
+  connectionId: number,
+  queryId: number,
+  name: string,
+  query: string,
+): Promise<SavedQuery> => {
   const res = await fetch(`${API_BASE}/api/connections/${connectionId}/queries/${queryId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -347,8 +365,15 @@ export function useSavedQueriesQuery(connectionId: number | null) {
 export function useCreateSavedQueryMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ connectionId, name, query }: { connectionId: number; name: string; query: string }) =>
-      createSavedQueryApi(connectionId, name, query),
+    mutationFn: ({
+      connectionId,
+      name,
+      query,
+    }: {
+      connectionId: number;
+      name: string;
+      query: string;
+    }) => createSavedQueryApi(connectionId, name, query),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["savedQueries", variables.connectionId] });
     },
@@ -358,8 +383,17 @@ export function useCreateSavedQueryMutation() {
 export function useUpdateSavedQueryMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ connectionId, queryId, name, query }: { connectionId: number; queryId: number; name: string; query: string }) =>
-      updateSavedQueryApi(connectionId, queryId, name, query),
+    mutationFn: ({
+      connectionId,
+      queryId,
+      name,
+      query,
+    }: {
+      connectionId: number;
+      queryId: number;
+      name: string;
+      query: string;
+    }) => updateSavedQueryApi(connectionId, queryId, name, query),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["savedQueries", variables.connectionId] });
     },

@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"datafrost/internal/adapters"
 	"datafrost/internal/models"
 	"fmt"
 )
@@ -15,9 +16,14 @@ func NewConnectionStore(db *sql.DB) *ConnectionStore {
 }
 
 func (s *ConnectionStore) Create(req models.CreateConnectionRequest) (*models.Connection, error) {
+	credentialsJSON, err := adapters.SerializeCredentials(req.Credentials)
+	if err != nil {
+		return nil, err
+	}
+
 	result, err := s.db.Exec(
-		"INSERT INTO connections (name, url, token) VALUES (?, ?, ?)",
-		req.Name, req.URL, req.Token,
+		"INSERT INTO connections (name, type, credentials) VALUES (?, ?, ?)",
+		req.Name, req.Type, credentialsJSON,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connection: %w", err)
@@ -33,10 +39,11 @@ func (s *ConnectionStore) Create(req models.CreateConnectionRequest) (*models.Co
 
 func (s *ConnectionStore) GetByID(id int64) (*models.Connection, error) {
 	var conn models.Connection
+	var credentialsJSON string
 	err := s.db.QueryRow(
-		"SELECT id, name, url, token, created_at FROM connections WHERE id = ?",
+		"SELECT id, name, type, credentials, created_at FROM connections WHERE id = ?",
 		id,
-	).Scan(&conn.ID, &conn.Name, &conn.URL, &conn.Token, &conn.CreatedAt)
+	).Scan(&conn.ID, &conn.Name, &conn.Type, &credentialsJSON, &conn.CreatedAt)
 
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -45,12 +52,17 @@ func (s *ConnectionStore) GetByID(id int64) (*models.Connection, error) {
 		return nil, fmt.Errorf("failed to get connection: %w", err)
 	}
 
+	conn.Credentials, err = adapters.DeserializeCredentials(credentialsJSON)
+	if err != nil {
+		return nil, err
+	}
+
 	return &conn, nil
 }
 
 func (s *ConnectionStore) List() ([]models.Connection, error) {
 	rows, err := s.db.Query(
-		"SELECT id, name, url, token, created_at FROM connections ORDER BY created_at DESC",
+		"SELECT id, name, type, credentials, created_at FROM connections ORDER BY created_at DESC",
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list connections: %w", err)
@@ -60,8 +72,13 @@ func (s *ConnectionStore) List() ([]models.Connection, error) {
 	var connections []models.Connection
 	for rows.Next() {
 		var conn models.Connection
-		if err := rows.Scan(&conn.ID, &conn.Name, &conn.URL, &conn.Token, &conn.CreatedAt); err != nil {
+		var credentialsJSON string
+		if err := rows.Scan(&conn.ID, &conn.Name, &conn.Type, &credentialsJSON, &conn.CreatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan connection: %w", err)
+		}
+		conn.Credentials, err = adapters.DeserializeCredentials(credentialsJSON)
+		if err != nil {
+			return nil, err
 		}
 		connections = append(connections, conn)
 	}
@@ -78,9 +95,14 @@ func (s *ConnectionStore) Delete(id int64) error {
 }
 
 func (s *ConnectionStore) Update(id int64, req models.UpdateConnectionRequest) (*models.Connection, error) {
-	_, err := s.db.Exec(
-		"UPDATE connections SET name = ?, url = ?, token = ? WHERE id = ?",
-		req.Name, req.URL, req.Token, id,
+	credentialsJSON, err := adapters.SerializeCredentials(req.Credentials)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = s.db.Exec(
+		"UPDATE connections SET name = ?, type = ?, credentials = ? WHERE id = ?",
+		req.Name, req.Type, credentialsJSON, id,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update connection: %w", err)

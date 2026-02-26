@@ -1,9 +1,9 @@
 package handlers
 
 import (
+	"datafrost/internal/adapters"
 	"datafrost/internal/db"
 	"datafrost/internal/models"
-	"datafrost/internal/turso"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -12,11 +12,15 @@ import (
 )
 
 type TablesHandler struct {
-	store *db.ConnectionStore
+	store   *db.ConnectionStore
+	factory *adapters.Factory
 }
 
 func NewTablesHandler(store *db.ConnectionStore) *TablesHandler {
-	return &TablesHandler{store: store}
+	return &TablesHandler{
+		store:   store,
+		factory: adapters.NewFactory(),
+	}
 }
 
 func (h *TablesHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -37,14 +41,19 @@ func (h *TablesHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := turso.NewClient(conn.URL, conn.Token)
+	adapter, err := h.factory.GetAdapter(conn.Type)
 	if err != nil {
+		JSONError(w, http.StatusBadRequest, "failed to get adapter: "+err.Error())
+		return
+	}
+	defer adapter.Close()
+
+	if err := adapter.Connect(conn.Credentials); err != nil {
 		JSONError(w, http.StatusBadRequest, "failed to connect: "+err.Error())
 		return
 	}
-	defer client.Close()
 
-	tables, err := client.ListTables()
+	tables, err := adapter.ListTables()
 	if err != nil {
 		JSONError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -77,12 +86,17 @@ func (h *TablesHandler) GetData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := turso.NewClient(conn.URL, conn.Token)
+	adapter, err := h.factory.GetAdapter(conn.Type)
 	if err != nil {
+		JSONError(w, http.StatusBadRequest, "failed to get adapter: "+err.Error())
+		return
+	}
+	defer adapter.Close()
+
+	if err := adapter.Connect(conn.Credentials); err != nil {
 		JSONError(w, http.StatusBadRequest, "failed to connect: "+err.Error())
 		return
 	}
-	defer client.Close()
 
 	limitStr := r.URL.Query().Get("limit")
 	pageStr := r.URL.Query().Get("page")
@@ -114,7 +128,7 @@ func (h *TablesHandler) GetData(w http.ResponseWriter, r *http.Request) {
 
 	offset := (page - 1) * limit
 
-	result, err := client.GetTableData(tableName, limit, offset, filters)
+	result, err := adapter.GetTableData(tableName, limit, offset, filters)
 	if err != nil {
 		JSONError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -128,11 +142,15 @@ type QueryRequest struct {
 }
 
 type QueryHandler struct {
-	store *db.ConnectionStore
+	store   *db.ConnectionStore
+	factory *adapters.Factory
 }
 
 func NewQueryHandler(store *db.ConnectionStore) *QueryHandler {
-	return &QueryHandler{store: store}
+	return &QueryHandler{
+		store:   store,
+		factory: adapters.NewFactory(),
+	}
 }
 
 func (h *QueryHandler) Execute(w http.ResponseWriter, r *http.Request) {
@@ -164,14 +182,19 @@ func (h *QueryHandler) Execute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := turso.NewClient(conn.URL, conn.Token)
+	adapter, err := h.factory.GetAdapter(conn.Type)
 	if err != nil {
+		JSONError(w, http.StatusBadRequest, "failed to get adapter: "+err.Error())
+		return
+	}
+	defer adapter.Close()
+
+	if err := adapter.Connect(conn.Credentials); err != nil {
 		JSONError(w, http.StatusBadRequest, "failed to connect: "+err.Error())
 		return
 	}
-	defer client.Close()
 
-	result, err := client.ExecuteQuery(req.Query)
+	result, err := adapter.ExecuteQuery(req.Query)
 	if err != nil {
 		JSONError(w, http.StatusBadRequest, err.Error())
 		return

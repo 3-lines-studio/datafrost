@@ -51,8 +51,8 @@ func (c *ConfigDB) migrate() error {
 		`CREATE TABLE IF NOT EXISTS connections (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name TEXT NOT NULL UNIQUE,
-			url TEXT NOT NULL,
-			token TEXT NOT NULL,
+			type TEXT NOT NULL,
+			credentials TEXT NOT NULL,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
 		`CREATE TABLE IF NOT EXISTS app_state (

@@ -1,9 +1,9 @@
 package handlers
 
 import (
+	"datafrost/internal/adapters"
 	"datafrost/internal/db"
 	"datafrost/internal/models"
-	"datafrost/internal/turso"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -12,11 +12,15 @@ import (
 )
 
 type ConnectionsHandler struct {
-	store *db.ConnectionStore
+	store   *db.ConnectionStore
+	factory *adapters.Factory
 }
 
 func NewConnectionsHandler(store *db.ConnectionStore) *ConnectionsHandler {
-	return &ConnectionsHandler{store: store}
+	return &ConnectionsHandler{
+		store:   store,
+		factory: adapters.NewFactory(),
+	}
 }
 
 func (h *ConnectionsHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -36,6 +40,11 @@ func (h *ConnectionsHandler) List(w http.ResponseWriter, r *http.Request) {
 	JSONResponse(w, http.StatusOK, response)
 }
 
+func (h *ConnectionsHandler) ListAdapters(w http.ResponseWriter, r *http.Request) {
+	adapters := h.factory.ListAdapters()
+	JSONResponse(w, http.StatusOK, adapters)
+}
+
 func (h *ConnectionsHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req models.CreateConnectionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -43,8 +52,13 @@ func (h *ConnectionsHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Name == "" || req.URL == "" {
-		JSONError(w, http.StatusBadRequest, "name and url are required")
+	if req.Name == "" {
+		JSONError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+
+	if req.Type == "" {
+		JSONError(w, http.StatusBadRequest, "type is required")
 		return
 	}
 
@@ -103,8 +117,13 @@ func (h *ConnectionsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Name == "" || req.URL == "" {
-		JSONError(w, http.StatusBadRequest, "name and url are required")
+	if req.Name == "" {
+		JSONError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+
+	if req.Type == "" {
+		JSONError(w, http.StatusBadRequest, "type is required")
 		return
 	}
 
@@ -124,17 +143,15 @@ func (h *ConnectionsHandler) Test(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.URL == "" {
-		JSONError(w, http.StatusBadRequest, "url is required")
+	if req.Type == "" {
+		JSONError(w, http.StatusBadRequest, "type is required")
 		return
 	}
 
-	client, err := turso.NewClient(req.URL, req.Token)
-	if err != nil {
+	if err := h.factory.TestConnection(req.Type, req.Credentials); err != nil {
 		JSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	defer client.Close()
 
 	JSONResponse(w, http.StatusOK, map[string]bool{"success": true})
 }
@@ -158,12 +175,10 @@ func (h *ConnectionsHandler) TestExisting(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	client, err := turso.NewClient(conn.URL, conn.Token)
-	if err != nil {
+	if err := h.factory.TestConnection(conn.Type, conn.Credentials); err != nil {
 		JSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	defer client.Close()
 
 	JSONResponse(w, http.StatusOK, map[string]bool{"success": true})
 }
