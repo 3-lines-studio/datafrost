@@ -197,6 +197,7 @@ func (a *BigQueryAdapter) ExecuteQuery(query string) (*models.QueryResult, error
 	return a.executeQueryWithCount(query)
 }
 
+
 func (a *BigQueryAdapter) executeQueryWithCount(query string) (*models.QueryResult, error) {
 	ctx := context.Background()
 	q := a.client.Query(query)

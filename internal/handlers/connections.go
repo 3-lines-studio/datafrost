@@ -15,12 +15,14 @@ import (
 type ConnectionsHandler struct {
 	store   *db.ConnectionStore
 	factory *adapters.Factory
+	cache   *adapters.AdapterCache
 }
 
-func NewConnectionsHandler(store *db.ConnectionStore) *ConnectionsHandler {
+func NewConnectionsHandler(store *db.ConnectionStore, cache *adapters.AdapterCache) *ConnectionsHandler {
 	return &ConnectionsHandler{
 		store:   store,
 		factory: adapters.NewFactory(),
+		cache:   cache,
 	}
 }
 
@@ -85,6 +87,7 @@ func (h *ConnectionsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.cache.Invalidate(id)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -127,6 +130,8 @@ func (h *ConnectionsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		JSONError(w, http.StatusBadRequest, "type is required")
 		return
 	}
+
+	h.cache.Invalidate(id)
 
 	conn, err := h.store.Update(id, req)
 	if err != nil {

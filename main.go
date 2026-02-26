@@ -13,6 +13,7 @@ import (
 	"github.com/3-lines-studio/bifrost"
 	webview "github.com/webview/webview_go"
 
+	"github.com/3-lines-studio/datafrost/internal/adapters"
 	"github.com/3-lines-studio/datafrost/internal/db"
 	"github.com/3-lines-studio/datafrost/internal/handlers"
 
@@ -58,6 +59,9 @@ func main() {
 
 	connectionStore := db.NewConnectionStore(configDB.DB())
 
+	adapterCache := adapters.NewAdapterCache()
+	defer adapterCache.Close()
+
 	apiRouter := chi.NewRouter()
 	apiRouter.Use(middleware.Logger)
 	apiRouter.Use(middleware.Recoverer)
@@ -67,9 +71,9 @@ func main() {
 		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type"},
 	}))
 
-	connectionsHandler := handlers.NewConnectionsHandler(connectionStore)
-	tablesHandler := handlers.NewTablesHandler(connectionStore)
-	queryHandler := handlers.NewQueryHandler(connectionStore)
+	connectionsHandler := handlers.NewConnectionsHandler(connectionStore, adapterCache)
+	tablesHandler := handlers.NewTablesHandler(connectionStore, adapterCache)
+	queryHandler := handlers.NewQueryHandler(connectionStore, adapterCache)
 	themeHandler := handlers.NewThemeHandler(configDB.DB())
 	layoutHandler := handlers.NewLayoutHandler(configDB.DB())
 	tabsHandler := handlers.NewTabsHandler(configDB.DB())
