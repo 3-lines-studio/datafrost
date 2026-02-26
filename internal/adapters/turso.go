@@ -135,7 +135,7 @@ func (a *TursoAdapter) GetTableData(tableName string, limit, offset int, filters
 }
 
 func (a *TursoAdapter) ExecuteQuery(query string) (*models.QueryResult, error) {
-	return a.executeQueryWithArgs(applyRowLimit(query), nil)
+	return a.executeQueryWithArgs(query, nil)
 }
 
 

@@ -3,7 +3,6 @@ package adapters
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/3-lines-studio/datafrost/internal/models"
 )
@@ -64,18 +63,6 @@ func (f *Factory) TestConnection(adapterType string, credentials map[string]any)
 	}
 
 	return adapter.Ping()
-}
-
-const maxQueryRows = 1000
-
-// applyRowLimit appends a LIMIT clause to queries that don't already have one,
-// preventing unbounded result sets from the query editor.
-func applyRowLimit(query string) string {
-	upper := strings.ToUpper(strings.TrimSpace(query))
-	if strings.Contains(upper, "LIMIT") {
-		return query
-	}
-	return strings.TrimRight(strings.TrimSpace(query), ";") + fmt.Sprintf(" LIMIT %d", maxQueryRows)
 }
 
 func SerializeCredentials(credentials map[string]any) (string, error) {

@@ -214,7 +214,7 @@ func (a *PostgresAdapter) GetTableData(tableName string, limit, offset int, filt
 }
 
 func (a *PostgresAdapter) ExecuteQuery(query string) (*models.QueryResult, error) {
-	return a.executeQueryWithArgs(applyRowLimit(query), nil)
+	return a.executeQueryWithArgs(query, nil)
 }
 
 
