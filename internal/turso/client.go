@@ -74,13 +74,8 @@ func (c *Client) ExecuteQuery(query string) (*models.QueryResult, error) {
 		return nil, fmt.Errorf("only SELECT, WITH, and PRAGMA queries are allowed")
 	}
 
-	limitedQuery := query
-	if !strings.Contains(upperQuery, "LIMIT") {
-		limitedQuery = fmt.Sprintf("%s LIMIT 100", query)
-	}
-
 	ctx := context.Background()
-	rows, err := c.conn.QueryContext(ctx, limitedQuery)
+	rows, err := c.conn.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("query failed: %w", err)
 	}

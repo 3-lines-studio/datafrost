@@ -9,16 +9,25 @@ import {
   Table,
   Sun,
   Moon,
+  MoreVertical,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import { ScrollArea } from "../ui/scroll-area";
-import type { Connection, TableInfo } from "../../types";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
+import type { Connection, TableInfo, SavedQuery } from "../../types";
+import { SavedQueriesSection } from "../queries/saved-queries-section";
 
 interface SidebarProps {
   connections: Connection[];
   tables: TableInfo[];
+  savedQueries: SavedQuery[];
+  savedQueriesLoading: boolean;
   selectedConnection: number | null;
-  selectedTable: string | null;
   lastId: number;
   theme: "light" | "dark";
   onSelectConnection: (id: number) => void;
@@ -27,14 +36,20 @@ interface SidebarProps {
   onEditConnection: (id: number) => void;
   onDeleteConnection: (id: number) => void;
   onTestConnection: (id: number) => void;
+  onDisconnectConnection: () => void;
+  onNewQuery: () => void;
+  onOpenSavedQuery: (query: SavedQuery) => void;
+  onRenameSavedQuery: (query: SavedQuery) => void;
+  onDeleteSavedQuery: (query: SavedQuery) => void;
   onToggleTheme: () => void;
 }
 
 export function Sidebar({
   connections,
   tables,
+  savedQueries,
+  savedQueriesLoading,
   selectedConnection,
-  selectedTable,
   lastId,
   theme,
   onSelectConnection,
@@ -43,31 +58,36 @@ export function Sidebar({
   onEditConnection,
   onDeleteConnection,
   onTestConnection,
+  onDisconnectConnection,
+  onNewQuery,
+  onOpenSavedQuery,
+  onRenameSavedQuery,
+  onDeleteSavedQuery,
   onToggleTheme,
 }: SidebarProps) {
   return (
-    <div className="h-full border-r border-zinc-200 dark:border-zinc-800 flex flex-col bg-zinc-50 dark:bg-zinc-950">
-      <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
-        <div className="flex items-center justify-between">
+    <div className="h-full border-r border-gray-200 dark:border-gray-800 flex flex-col bg-gray-50 dark:bg-gray-950">
+      <div className="px-2 border-b border-gray-200 dark:border-gray-800">
+        <div className="flex items-center justify-between py-1">
           <div className="flex items-center gap-2">
-            <Database className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
-            <span className="font-semibold">Databases</span>
+            <Database className="size-4 text-gray-600 dark:text-gray-400" />
+            <span className="font-medium">Datafrost</span>
           </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={onAddConnection}
-            className="h-8 w-8"
+            className="h-7 w-7"
           >
             <Plus className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-y-auto">
         <div className="p-2 space-y-1">
           {connections?.length === 0 ? (
-            <p className="text-sm text-zinc-500 text-center py-4">
+            <p className="text-sm text-gray-500 text-center py-4">
               No connections
             </p>
           ) : (
@@ -78,8 +98,8 @@ export function Sidebar({
                     group flex items-center justify-between px-2 py-2 rounded-md cursor-pointer text-sm
                     ${
                       selectedConnection === conn.id
-                        ? "bg-zinc-200 dark:bg-zinc-800"
-                        : "hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                        ? "bg-gray-200 dark:bg-gray-800"
+                        : "hover:bg-gray-100 dark:hover:bg-gray-900"
                     }
                     ${
                       lastId === conn.id && selectedConnection !== conn.id
@@ -93,80 +113,104 @@ export function Sidebar({
                     onClick={() => onSelectConnection(conn.id)}
                   >
                     {selectedConnection === conn.id ? (
-                      <ChevronDown className="h-4 w-4 shrink-0 text-zinc-500" />
+                      <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" />
                     ) : (
-                      <ChevronRight className="h-4 w-4 shrink-0 text-zinc-500" />
+                      <ChevronRight className="h-4 w-4 shrink-0 text-gray-500" />
                     )}
                     <span className="truncate">{conn.name}</span>
                     {lastId === conn.id && (
                       <span className="text-xs text-blue-500">&#8226;</span>
                     )}
                   </div>
-                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onTestConnection(conn.id);
-                      }}
-                    >
-                      <Activity className="h-3 w-3 text-zinc-500" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditConnection(conn.id);
-                      }}
-                    >
-                      <Pencil className="h-3 w-3 text-zinc-500" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteConnection(conn.id);
-                      }}
-                    >
-                      <Trash2 className="h-3 w-3 text-zinc-500" />
-                    </Button>
-                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MoreVertical className="h-3 w-3 text-gray-500" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      {selectedConnection === conn.id && (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDisconnectConnection();
+                          }}
+                        >
+                          <Activity className="mr-2 h-4 w-4" />
+                          Disconnect
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTestConnection(conn.id);
+                        }}
+                      >
+                        <Activity className="mr-2 h-4 w-4" />
+                        Test Connection
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditConnection(conn.id);
+                        }}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteConnection(conn.id);
+                        }}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
-                {selectedConnection === conn.id && tables?.length > 0 && (
-                  <div className="ml-4 mt-1 space-y-1">
-                    {tables.map((table) => (
-                      <div
-                        key={table.name}
-                        onClick={() => onSelectTable(table.name)}
-                        className={`
-                          flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-sm
-                          ${
-                            selectedTable === table.name
-                              ? "bg-zinc-200 dark:bg-zinc-800"
-                              : "hover:bg-zinc-100 dark:hover:bg-zinc-900"
-                          }
-                        `}
-                      >
-                        <Table className="h-3.5 w-3.5 text-zinc-500" />
-                        <span className="truncate">{table.name}</span>
+                {selectedConnection === conn.id && (
+                  <>
+                    {tables?.length > 0 && (
+                      <div className="mt-1 space-y-1">
+                        {tables.map((table) => (
+                          <div
+                            key={table.name}
+                            onClick={() => onSelectTable(table.name)}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-sm hover:bg-gray-100 dark:hover:bg-gray-900"
+                          >
+                            <Table className="h-3.5 w-3.5 text-gray-500" />
+                            <span className="truncate">{table.name}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    )}
+                    <SavedQueriesSection
+                      queries={savedQueries}
+                      isLoading={savedQueriesLoading}
+                      onNewQuery={onNewQuery}
+                      onOpenQuery={onOpenSavedQuery}
+                      onRenameQuery={onRenameSavedQuery}
+                      onDeleteQuery={onDeleteSavedQuery}
+                    />
+                  </>
                 )}
               </div>
             ))
           )}
         </div>
-      </ScrollArea>
+      </div>
 
-      <div className="p-2 border-t border-zinc-200 dark:border-zinc-800">
+      <div className="p-2 border-t border-gray-200 dark:border-gray-800">
         <Button
           variant="ghost"
           size="icon"

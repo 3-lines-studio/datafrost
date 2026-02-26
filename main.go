@@ -45,6 +45,10 @@ func main() {
 	tablesHandler := handlers.NewTablesHandler(connectionStore)
 	queryHandler := handlers.NewQueryHandler(connectionStore)
 	themeHandler := handlers.NewThemeHandler(configDB.DB())
+	layoutHandler := handlers.NewLayoutHandler(configDB.DB())
+	tabsHandler := handlers.NewTabsHandler(configDB.DB())
+	savedQueriesStore := db.NewSavedQueriesStore(configDB.DB())
+	savedQueriesHandler := handlers.NewSavedQueriesHandler(savedQueriesStore)
 
 	apiRouter.Route("/api", func(r chi.Router) {
 		r.Route("/connections", func(r chi.Router) {
@@ -58,11 +62,23 @@ func main() {
 				r.Get("/tables", tablesHandler.List)
 				r.Get("/tables/{name}", tablesHandler.GetData)
 				r.Post("/query", queryHandler.Execute)
+				r.Get("/tabs", tabsHandler.Get)
+				r.Post("/tabs", tabsHandler.Save)
+				r.Route("/queries", func(r chi.Router) {
+					r.Get("/", savedQueriesHandler.List)
+					r.Post("/", savedQueriesHandler.Create)
+					r.Route("/{queryId}", func(r chi.Router) {
+						r.Put("/", savedQueriesHandler.Update)
+						r.Delete("/", savedQueriesHandler.Delete)
+					})
+				})
 			})
 			r.Post("/test", connectionsHandler.Test)
 		})
 		r.Get("/theme", themeHandler.Get)
 		r.Post("/theme", themeHandler.Update)
+		r.Get("/layouts/{key}", layoutHandler.Get)
+		r.Post("/layouts/{key}", layoutHandler.Save)
 	})
 
 	app := bifrost.New(

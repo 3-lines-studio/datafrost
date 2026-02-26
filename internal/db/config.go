@@ -59,6 +59,15 @@ func (c *ConfigDB) migrate() error {
 			key TEXT PRIMARY KEY,
 			value TEXT NOT NULL
 		)`,
+		`CREATE TABLE IF NOT EXISTS saved_queries (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			connection_id INTEGER NOT NULL,
+			name TEXT NOT NULL,
+			query TEXT NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (connection_id) REFERENCES connections(id) ON DELETE CASCADE
+		)`,
 	}
 
 	for _, migration := range migrations {

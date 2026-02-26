@@ -28,7 +28,7 @@ export function ResultsTable({ result, loading, error }: ResultsTableProps) {
     if (loading) {
       return (
         <div className="flex items-center justify-center h-32">
-          <span className="text-sm text-zinc-500">Loading...</span>
+          <span className="text-sm text-gray-500">Loading...</span>
         </div>
       );
     }
@@ -44,7 +44,7 @@ export function ResultsTable({ result, loading, error }: ResultsTableProps) {
     if (!result) {
       return (
         <div className="flex items-center justify-center h-32">
-          <span className="text-sm text-zinc-500">
+          <span className="text-sm text-gray-500">
             Run a query to see results
           </span>
         </div>
@@ -54,7 +54,7 @@ export function ResultsTable({ result, loading, error }: ResultsTableProps) {
     if (!result.rows || result.rows.length === 0) {
       return (
         <div className="flex items-center justify-center h-32">
-          <span className="text-sm text-zinc-500">No rows returned</span>
+          <span className="text-sm text-gray-500">No rows returned</span>
         </div>
       );
     }
@@ -78,7 +78,7 @@ export function ResultsTable({ result, loading, error }: ResultsTableProps) {
                   {row.map((cell, j) => (
                     <TableCell key={j} className="max-w-xs truncate">
                       <span
-                        className={cell === null ? "text-zinc-400 italic" : ""}
+                        className={cell === null ? "text-gray-400 italic" : ""}
                         title={formatValue(cell)}
                       >
                         {formatValue(cell)}
@@ -90,7 +90,7 @@ export function ResultsTable({ result, loading, error }: ResultsTableProps) {
             </TableBody>
           </Table>
         </div>
-        <div className="h-8 flex items-center px-4 border-t border-zinc-200 dark:border-zinc-800 text-xs text-zinc-500">
+        <div className="h-8 flex items-center px-4 border-t border-gray-200 dark:border-gray-800 text-xs text-gray-500">
           {result.count} rows
           {result.limited && (
             <span className="ml-2 text-amber-600">(showing max 100)</span>
@@ -101,9 +101,9 @@ export function ResultsTable({ result, loading, error }: ResultsTableProps) {
   }, [result, loading, error]);
 
   return (
-    <div className="flex flex-col h-full border-t border-zinc-200 dark:border-zinc-800">
-      <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950">
-        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+    <div className="flex flex-col h-full border-t border-gray-200 dark:border-gray-800">
+      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950">
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
           Results
         </span>
       </div>

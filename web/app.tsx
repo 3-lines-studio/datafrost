@@ -1,9 +1,12 @@
 import "@/app.css";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ConnectionDialog } from "@/components/connections/connection-dialog";
-import { QueryEditor } from "@/components/query/query-editor";
-import { ResultsTable } from "@/components/query/results-table";
+import { TabBar } from "@/components/tabs/tab-bar";
+import { TableTab } from "@/components/tabs/table-tab";
+import { QueryTab } from "@/components/tabs/query-tab";
+import { SaveQueryDialog } from "@/components/queries/save-query-dialog";
+import { RenameQueryDialog } from "@/components/queries/rename-query-dialog";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { QueryProvider } from "@/lib/query-provider";
 import { useAppStore } from "@/lib/store";
@@ -27,8 +30,16 @@ import {
   useUpdateConnectionMutation,
   useTestConnectionMutation,
   useTestExistingConnectionMutation,
+  useLayoutQuery,
+  useSaveLayoutMutation,
+  useTabsQuery,
+  useSaveTabsMutation,
+  useSavedQueriesQuery,
+  useCreateSavedQueryMutation,
+  useUpdateSavedQueryMutation,
+  useDeleteSavedQueryMutation,
 } from "@/lib/hooks";
-import type { Connection } from "@/types";
+import type { Connection, QueryResult, Tab, SavedQuery } from "@/types";
 
 interface AlertState {
   open: boolean;
@@ -36,6 +47,12 @@ interface AlertState {
   description: string;
   type: "info" | "success" | "error" | "confirm";
   onConfirm?: () => void;
+}
+
+interface TabResult {
+  result: QueryResult | null;
+  loading: boolean;
+  error: string | null;
 }
 
 export function Head() {
@@ -57,16 +74,23 @@ export function Head() {
 function PageContent() {
   const {
     selectedConnection,
-    selectedTable,
     showAddDialog,
-    queryResult,
     theme,
+    tabs,
+    activeTabId,
+    loadedConnectionId,
+    hasTabsChanged,
     setSelectedConnection,
-    setSelectedTable,
     setShowAddDialog,
-    setQueryResult,
-    clearSelection,
     setTheme,
+    setTabs,
+    setActiveTabId,
+    setLoadedConnectionId,
+    resetTabsChanged,
+    addTab,
+    closeTab,
+    updateTab,
+    clearSelection,
   } = useAppStore();
 
   const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
@@ -79,6 +103,14 @@ function PageContent() {
     description: "",
     type: "info",
   });
+
+  const [tabResults, setTabResults] = useState<Record<string, TabResult>>({});
+  const [saveQueryDialogOpen, setSaveQueryDialogOpen] = useState(false);
+  const [renameQueryDialogOpen, setRenameQueryDialogOpen] = useState(false);
+  const [queryToRename, setQueryToRename] = useState<SavedQuery | null>(null);
+  const [activeSavedQueryId, setActiveSavedQueryId] = useState<number | null>(
+    null,
+  );
 
   const { data: themeData, isLoading: themeLoading } = useThemeQuery();
   const updateThemeMutation = useUpdateThemeMutation();
@@ -107,10 +139,6 @@ function PageContent() {
     useConnectionsQuery();
   const { data: tables, isLoading: tablesLoading } =
     useTablesQuery(selectedConnection);
-  const { data: tableData } = useTableDataQuery(
-    selectedConnection,
-    selectedTable,
-  );
   const executeMutation = useExecuteQueryMutation(selectedConnection);
   const createMutation = useCreateConnectionMutation();
   const deleteMutation = useDeleteConnectionMutation();
@@ -122,25 +150,238 @@ function PageContent() {
   const connections = connectionsData?.connections || [];
   const lastId = connectionsData?.last_id || 0;
 
+  const activeTab = useMemo(() => {
+    return tabs.find((t) => t.id === activeTabId) || null;
+  }, [tabs, activeTabId]);
+
+  const { data: tableData } = useTableDataQuery(
+    selectedConnection,
+    activeTab?.type === "table" ? activeTab.tableName || null : null,
+  );
+
   useEffect(() => {
-    if (tableData) {
-      setQueryResult(tableData);
+    if (activeTab?.type === "table" && tableData && activeTabId) {
+      setTabResults((prev) => ({
+        ...prev,
+        [activeTabId]: {
+          result: tableData,
+          loading: false,
+          error: null,
+        },
+      }));
     }
-  }, [tableData, setQueryResult]);
+  }, [tableData, activeTab, activeTabId]);
+
+  const { data: tabsData, isLoading: tabsLoading } =
+    useTabsQuery(selectedConnection);
+  const saveTabsMutation = useSaveTabsMutation();
+
+  const { data: savedQueriesData, isLoading: savedQueriesLoading } =
+    useSavedQueriesQuery(selectedConnection);
+  const createSavedQueryMutation = useCreateSavedQueryMutation();
+  const updateSavedQueryMutation = useUpdateSavedQueryMutation();
+  const deleteSavedQueryMutation = useDeleteSavedQueryMutation();
+
+  useEffect(() => {
+    if (!selectedConnection) {
+      setTabs([]);
+      setActiveTabId(null);
+      setLoadedConnectionId(null);
+      return;
+    }
+
+    if (selectedConnection !== loadedConnectionId && tabsData?.tabs) {
+      setTabs(tabsData.tabs);
+      setLoadedConnectionId(selectedConnection);
+      if (tabsData.tabs.length > 0) {
+        setActiveTabId(tabsData.tabs[0].id);
+      } else {
+        setActiveTabId(null);
+      }
+    }
+  }, [
+    selectedConnection,
+    tabsData,
+    setTabs,
+    setActiveTabId,
+    setLoadedConnectionId,
+    loadedConnectionId,
+  ]);
+
+  useEffect(() => {
+    if (!selectedConnection || !hasTabsChanged) return;
+
+    const timeout = setTimeout(() => {
+      saveTabsMutation.mutate({ connectionId: selectedConnection, tabs });
+      resetTabsChanged();
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, [tabs, selectedConnection, hasTabsChanged, resetTabsChanged]);
 
   const handleSelectConnection = async (id: number) => {
     if (selectedConnection === id) {
       clearSelection();
+      return;
+    }
+    setSelectedConnection(id);
+    await setLastConnectedMutation.mutateAsync(id);
+  };
+
+  const handleDisconnectConnection = () => {
+    clearSelection();
+  };
+
+  const handleSaveQuery = async (name: string) => {
+    if (!selectedConnection || !activeTab || activeTab.type !== "query") return;
+
+    const queryText = activeTab.query || "";
+
+    if (activeSavedQueryId) {
+      await updateSavedQueryMutation.mutateAsync({
+        connectionId: selectedConnection,
+        queryId: activeSavedQueryId,
+        name,
+        query: queryText,
+      });
     } else {
-      setSelectedConnection(id);
-      setSelectedTable(null);
-      setQueryResult(null);
-      await setLastConnectedMutation.mutateAsync(id);
+      const savedQuery = await createSavedQueryMutation.mutateAsync({
+        connectionId: selectedConnection,
+        name,
+        query: queryText,
+      });
+      setActiveSavedQueryId(savedQuery.id);
+      updateTab(activeTab.id, { title: name });
+    }
+
+    setSaveQueryDialogOpen(false);
+  };
+
+  const handleOpenSavedQuery = (savedQuery: SavedQuery) => {
+    if (!selectedConnection) return;
+
+    const existingTab = tabs.find(
+      (t) =>
+        t.type === "query" &&
+        t.connectionId === selectedConnection &&
+        t.query === savedQuery.query,
+    );
+
+    if (existingTab) {
+      setActiveTabId(existingTab.id);
+      setActiveSavedQueryId(savedQuery.id);
+      return;
+    }
+
+    const isEmptyTab =
+      activeTab?.type === "query" &&
+      (!activeTab.query || activeTab.query === "");
+
+    if (isEmptyTab && activeTab) {
+      updateTab(activeTab.id, {
+        query: savedQuery.query,
+        title: savedQuery.name,
+      });
+      setActiveSavedQueryId(savedQuery.id);
+    } else {
+      const newTab: Tab = {
+        id: crypto.randomUUID(),
+        type: "query",
+        title: savedQuery.name,
+        connectionId: selectedConnection,
+        query: savedQuery.query,
+      };
+      addTab(newTab);
+      setActiveSavedQueryId(savedQuery.id);
+      setTabResults((prev) => ({
+        ...prev,
+        [newTab.id]: {
+          result: null,
+          loading: false,
+          error: null,
+        },
+      }));
     }
   };
 
+  const handleRenameSavedQuery = (savedQuery: SavedQuery) => {
+    setQueryToRename(savedQuery);
+    setRenameQueryDialogOpen(true);
+  };
+
+  const handleConfirmRename = async (name: string) => {
+    if (!selectedConnection || !queryToRename) return;
+
+    await updateSavedQueryMutation.mutateAsync({
+      connectionId: selectedConnection,
+      queryId: queryToRename.id,
+      name,
+      query: queryToRename.query,
+    });
+
+    const tabToUpdate = tabs.find(
+      (t) =>
+        t.type === "query" &&
+        t.connectionId === selectedConnection &&
+        t.query === queryToRename.query,
+    );
+
+    if (tabToUpdate) {
+      updateTab(tabToUpdate.id, { title: name });
+    }
+
+    setRenameQueryDialogOpen(false);
+    setQueryToRename(null);
+  };
+
+  const handleDeleteSavedQuery = async (savedQuery: SavedQuery) => {
+    if (!selectedConnection) return;
+
+    setAlertState({
+      open: true,
+      title: "Delete Saved Query",
+      description: `Are you sure you want to delete "${savedQuery.name}"? This action cannot be undone.`,
+      type: "confirm",
+      onConfirm: async () => {
+        await deleteSavedQueryMutation.mutateAsync({
+          connectionId: selectedConnection,
+          queryId: savedQuery.id,
+        });
+      },
+    });
+  };
+
   const handleSelectTable = (name: string) => {
-    setSelectedTable(name);
+    if (!selectedConnection) return;
+
+    const existingTab = tabs.find(
+      (t) =>
+        t.type === "table" &&
+        t.connectionId === selectedConnection &&
+        t.tableName === name,
+    );
+
+    if (existingTab) {
+      setActiveTabId(existingTab.id);
+      return;
+    }
+
+    const newTab: Tab = {
+      id: crypto.randomUUID(),
+      type: "table",
+      title: name,
+      connectionId: selectedConnection,
+      tableName: name,
+    };
+
+    addTab(newTab);
+    setTabResults((prev) => ({
+      ...prev,
+      [newTab.id]: {
+        result: null,
+        loading: true,
+        error: null,
+      },
+    }));
   };
 
   const handleSaveConnection = async (
@@ -208,28 +449,163 @@ function PageContent() {
     });
   };
 
-  const handleExecuteQuery = async (query: string) => {
-    try {
-      const result = await executeMutation.mutateAsync(query);
-      setQueryResult(result);
-    } catch {
-      setQueryResult(null);
+  const handleExecuteQuery = useCallback(
+    async (tabId: string, query: string) => {
+      if (!selectedConnection) return;
+
+      setTabResults((prev) => ({
+        ...prev,
+        [tabId]: {
+          ...prev[tabId],
+          loading: true,
+          error: null,
+        },
+      }));
+
+      try {
+        const result = await executeMutation.mutateAsync(query);
+        setTabResults((prev) => ({
+          ...prev,
+          [tabId]: {
+            result,
+            loading: false,
+            error: null,
+          },
+        }));
+      } catch (err: any) {
+        setTabResults((prev) => ({
+          ...prev,
+          [tabId]: {
+            result: null,
+            loading: false,
+            error: err.message || "Query failed",
+          },
+        }));
+      }
+    },
+    [selectedConnection, executeMutation],
+  );
+
+  const handleNewQueryTab = () => {
+    if (!selectedConnection) return;
+
+    const newTab: Tab = {
+      id: crypto.randomUUID(),
+      type: "query",
+      title: `Query ${tabs.filter((t) => t.type === "query").length + 1}`,
+      connectionId: selectedConnection,
+      query: "",
+    };
+
+    addTab(newTab);
+    setTabResults((prev) => ({
+      ...prev,
+      [newTab.id]: {
+        result: null,
+        loading: false,
+        error: null,
+      },
+    }));
+  };
+
+  const handleTabClick = (id: string) => {
+    setActiveTabId(id);
+  };
+
+  const handleTabClose = (id: string) => {
+    closeTab(id);
+    setTabResults((prev) => {
+      const newResults = { ...prev };
+      delete newResults[id];
+      return newResults;
+    });
+  };
+
+  const handleQueryChange = (tabId: string, query: string) => {
+    updateTab(tabId, { query });
+  };
+
+  const { data: horizontalData, isLoading: horizontalLoading } =
+    useLayoutQuery("horizontal");
+  const saveLayoutMutation = useSaveLayoutMutation();
+
+  if (horizontalLoading || themeLoading) {
+    return null;
+  }
+
+  const horizontalLayout = horizontalData?.layout
+    ? parseInt(horizontalData.layout)
+    : 20;
+
+  const handleHorizontalLayoutChange = (layout: { [id: string]: number }) => {
+    const firstPanelSize = Object.values(layout)[0];
+    if (firstPanelSize) {
+      saveLayoutMutation.mutate({
+        key: "horizontal",
+        layout: firstPanelSize.toString(),
+      });
     }
+  };
+
+  const currentTabResult = activeTabId ? tabResults[activeTabId] : null;
+
+  const renderTabContent = () => {
+    if (!activeTab || !selectedConnection) {
+      return (
+        <div className="flex items-center justify-center h-full text-gray-500">
+          <p>Select a database connection to view tabs</p>
+        </div>
+      );
+    }
+
+    if (activeTab.type === "table") {
+      return (
+        <TableTab
+          result={currentTabResult?.result || null}
+          loading={currentTabResult?.loading || tablesLoading}
+          error={currentTabResult?.error || null}
+        />
+      );
+    }
+
+    return (
+      <QueryTab
+        query={activeTab.query || ""}
+        onQueryChange={(q) => {
+          handleQueryChange(activeTab.id, q);
+          if (q !== activeTab.query) {
+            setActiveSavedQueryId(null);
+          }
+        }}
+        onExecute={(q) => handleExecuteQuery(activeTab.id, q)}
+        onSave={() => setSaveQueryDialogOpen(true)}
+        result={currentTabResult?.result || null}
+        loading={currentTabResult?.loading || false}
+        error={currentTabResult?.error || null}
+        executeLoading={executeMutation.isPending}
+      />
+    );
   };
 
   return (
     <ErrorBoundary>
-      <div className="h-screen flex flex-col bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
+      <div className="h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
         <ResizablePanelGroup
           orientation="horizontal"
           className="flex-1 overflow-hidden"
+          onLayoutChanged={handleHorizontalLayoutChange}
         >
-          <ResizablePanel defaultSize={20}>
+          <ResizablePanel
+            defaultSize={horizontalLayout}
+            minSize={200}
+            maxSize={400}
+          >
             <Sidebar
               connections={connections}
               tables={tables || []}
+              savedQueries={savedQueriesData?.queries || []}
+              savedQueriesLoading={savedQueriesLoading}
               selectedConnection={selectedConnection}
-              selectedTable={selectedTable}
               lastId={lastId}
               theme={theme}
               onSelectConnection={handleSelectConnection}
@@ -238,41 +614,33 @@ function PageContent() {
               onEditConnection={handleEditConnection}
               onDeleteConnection={handleDeleteConnection}
               onTestConnection={handleTestConnection}
+              onDisconnectConnection={handleDisconnectConnection}
+              onNewQuery={handleNewQueryTab}
+              onOpenSavedQuery={handleOpenSavedQuery}
+              onRenameSavedQuery={handleRenameSavedQuery}
+              onDeleteSavedQuery={handleDeleteSavedQuery}
               onToggleTheme={handleToggleTheme}
             />
           </ResizablePanel>
 
           <ResizableHandle
             withHandle
-            className="bg-zinc-200 dark:bg-zinc-800"
+            className="bg-gray-200 dark:bg-gray-800"
           />
 
-          <ResizablePanel defaultSize={80}>
-            <ResizablePanelGroup orientation="vertical">
-              <ResizablePanel defaultSize={20}>
-                <QueryEditor
-                  onExecute={handleExecuteQuery}
-                  loading={executeMutation.isPending}
-                />
-              </ResizablePanel>
-
-              <ResizableHandle
-                withHandle
-                className="bg-zinc-200 dark:bg-zinc-800"
+          <ResizablePanel defaultSize={100 - horizontalLayout}>
+            <div className="flex flex-col h-full">
+              <TabBar
+                tabs={tabs}
+                activeTabId={activeTabId}
+                hasConnection={!!selectedConnection}
+                isLoading={tabsLoading}
+                onTabClick={handleTabClick}
+                onTabClose={handleTabClose}
+                onNewQueryTab={handleNewQueryTab}
               />
-
-              <ResizablePanel defaultSize={80}>
-                <ResultsTable
-                  result={queryResult}
-                  loading={
-                    connectionsLoading ||
-                    tablesLoading ||
-                    executeMutation.isPending
-                  }
-                  error={executeMutation.error?.message || null}
-                />
-              </ResizablePanel>
-            </ResizablePanelGroup>
+              <div className="flex-1 min-h-0">{renderTabContent()}</div>
+            </div>
           </ResizablePanel>
         </ResizablePanelGroup>
 
@@ -284,6 +652,25 @@ function PageContent() {
           onSave={handleSaveConnection}
           onTest={(url, token) => testMutation.mutateAsync({ url, token })}
           testLoading={testMutation.isPending}
+        />
+
+        <SaveQueryDialog
+          open={saveQueryDialogOpen}
+          onOpenChange={setSaveQueryDialogOpen}
+          defaultName={activeTab?.type === "query" ? activeTab.title : ""}
+          onSave={handleSaveQuery}
+          isLoading={
+            createSavedQueryMutation.isPending ||
+            updateSavedQueryMutation.isPending
+          }
+        />
+
+        <RenameQueryDialog
+          open={renameQueryDialogOpen}
+          onOpenChange={setRenameQueryDialogOpen}
+          query={queryToRename}
+          onRename={handleConfirmRename}
+          isLoading={updateSavedQueryMutation.isPending}
         />
 
         <AlertDialog

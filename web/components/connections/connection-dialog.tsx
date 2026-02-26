@@ -30,9 +30,10 @@ export function ConnectionDialog({
   const [token, setToken] = useState("");
   const [showToken, setShowToken] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(
-    null,
-  );
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -83,7 +84,9 @@ export function ConnectionDialog({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {mode === "add" ? "Add Database Connection" : "Edit Database Connection"}
+            {mode === "add"
+              ? "Add Database Connection"
+              : "Edit Database Connection"}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSave} className="space-y-4 pt-4">
@@ -126,9 +129,9 @@ export function ConnectionDialog({
                 onClick={() => setShowToken(!showToken)}
               >
                 {showToken ? (
-                  <EyeOff className="h-4 w-4 text-zinc-500" />
+                  <EyeOff className="h-4 w-4 text-gray-500" />
                 ) : (
-                  <Eye className="h-4 w-4 text-zinc-500" />
+                  <Eye className="h-4 w-4 text-gray-500" />
                 )}
               </Button>
             </div>

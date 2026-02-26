@@ -1,7 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/inter";
+@import "@fontsource/ibm-plex-sans";
+@import "@fontsource/ibm-plex-mono";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -38,6 +39,17 @@
   --sidebar-accent-foreground: oklch(0.97 0.014 254.604);
   --sidebar-border: oklch(0.928 0.006 264.531);
   --sidebar-ring: oklch(0.707 0.022 261.325);
+
+  --prism-keyword: oklch(0.488 0.243 264.376);
+  --prism-string: oklch(0.52 0.14 145);
+  --prism-number: oklch(0.66 0.18 65);
+  --prism-comment: oklch(0.551 0.027 264.364);
+  --prism-operator: oklch(0.13 0.028 261.692);
+  --prism-punctuation: oklch(0.551 0.027 264.364);
+  --prism-function: oklch(0.546 0.245 262.881);
+  --prism-builtin: oklch(0.546 0.245 262.881);
+  --prism-variable: oklch(0.13 0.028 261.692);
+  --prism-property: oklch(0.13 0.028 261.692);
 }
 
 .dark {
@@ -72,10 +84,22 @@
   --sidebar-accent-foreground: oklch(0.97 0.014 254.604);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
+
+  --prism-keyword: oklch(0.65 0.18 266);
+  --prism-string: oklch(0.7 0.14 145);
+  --prism-number: oklch(0.8 0.18 65);
+  --prism-comment: oklch(0.551 0.027 264.364);
+  --prism-operator: oklch(0.985 0.002 247.839);
+  --prism-punctuation: oklch(0.551 0.027 264.364);
+  --prism-function: oklch(0.65 0.18 266);
+  --prism-builtin: oklch(0.65 0.18 266);
+  --prism-variable: oklch(0.985 0.002 247.839);
+  --prism-property: oklch(0.985 0.002 247.839);
 }
 
 @theme inline {
-  --font-sans: "Inter Variable", sans-serif;
+  --font-sans: "IBM Plex Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -126,4 +150,93 @@
   html {
     @apply font-sans;
   }
+}
+
+code[class*="language-"],
+pre[class*="language-"] {
+  color: var(--foreground);
+  background: none;
+  text-shadow: none;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 14px;
+  text-align: left;
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  word-wrap: normal;
+  line-height: 1.5;
+  tab-size: 2;
+  hyphens: none;
+}
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: var(--prism-comment);
+}
+
+.token.punctuation {
+  color: var(--prism-punctuation);
+}
+
+.token.namespace {
+  opacity: 0.7;
+}
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol,
+.token.deleted {
+  color: var(--prism-number);
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+  color: var(--prism-string);
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+  color: var(--prism-operator);
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: var(--prism-keyword);
+}
+
+.token.function,
+.token.class-name {
+  color: var(--prism-function);
+}
+
+.token.regex,
+.token.important,
+.token.variable {
+  color: var(--prism-variable);
+}
+
+.token.important,
+.token.bold {
+  font-weight: bold;
+}
+
+.token.italic {
+  font-style: italic;
+}
+
+.token.entity {
+  cursor: help;
 }

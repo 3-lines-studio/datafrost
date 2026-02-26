@@ -33,3 +33,23 @@ export interface TestConnectionRequest {
   url: string;
   token: string;
 }
+
+export type TabType = "table" | "query";
+
+export interface Tab {
+  id: string;
+  type: TabType;
+  title: string;
+  connectionId: number;
+  tableName?: string;
+  query?: string;
+}
+
+export interface SavedQuery {
+  id: number;
+  connectionId: number;
+  name: string;
+  query: string;
+  createdAt: string;
+  updatedAt: string;
+}

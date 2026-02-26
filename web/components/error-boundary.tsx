@@ -48,8 +48,8 @@ export class ErrorBoundary extends Component<Props, State> {
           window.location.hostname === "127.0.0.1");
 
       return (
-        <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4">
-          <div className="max-w-2xl w-full bg-white dark:bg-zinc-900 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-800 p-6">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4">
+          <div className="max-w-2xl w-full bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                 <svg
@@ -66,12 +66,12 @@ export class ErrorBoundary extends Component<Props, State> {
                   />
                 </svg>
               </div>
-              <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+              <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                 Something went wrong
               </h1>
             </div>
 
-            <p className="text-zinc-600 dark:text-zinc-400 mb-4">
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
               The application encountered an error. Try reloading the page to
               continue.
             </p>
@@ -87,10 +87,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
             {isDev && componentStack && (
               <div className="mb-4">
-                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Component Stack:
                 </p>
-                <pre className="text-xs bg-zinc-100 dark:bg-zinc-950 p-3 rounded-md overflow-x-auto text-zinc-700 dark:text-zinc-400 font-mono">
+                <pre className="text-xs bg-gray-100 dark:bg-gray-950 p-3 rounded-md overflow-x-auto text-gray-700 dark:text-gray-400 font-mono">
                   {componentStack}
                 </pre>
               </div>
@@ -99,7 +99,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="flex gap-3">
               <button
                 onClick={this.handleReload}
-                className="px-4 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-md text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+                className="px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-md text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
               >
                 Reload Page
               </button>
@@ -111,7 +111,7 @@ export class ErrorBoundary extends Component<Props, State> {
                     errorInfo: null,
                   })
                 }
-                className="px-4 py-2 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-md text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
                 Try Again
               </button>
