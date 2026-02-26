@@ -60,10 +60,7 @@ export function Head() {
   return (
     <>
       <title>Datafrost - Turso Database UI</title>
-      <meta
-        name="description"
-        content="A simple database UI for Turso libSQL"
-      />
+      <meta name="description" content="A simple database UI" />
       <link
         href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap"
         rel="stylesheet"

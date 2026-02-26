@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Datafrost
+Comment=Database management GUI application
+Exec=/usr/local/bin/datafrost
+Icon=/usr/local/share/pixmaps/datafrost.png
+Type=Application
+Categories=Development;Database;
+Terminal=false
+StartupNotify=true
+Version=VERSION_PLACEHOLDER

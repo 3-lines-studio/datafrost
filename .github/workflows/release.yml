@@ -1,0 +1,335 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g., 1.0.0)'
+        required: true
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
+      - name: Install Node dependencies
+        run: bun install
+
+      - name: Bifrost build
+        run: go run github.com/3-lines-studio/bifrost/cmd/build@latest main.go
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION=${{ github.event.inputs.version }}
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Build Go binary
+        run: |
+          go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o datafrost main.go
+
+      - name: Create Linux package
+        run: |
+          PKG_DIR="datafrost-linux-v${{ steps.version.outputs.VERSION }}"
+          mkdir -p "$PKG_DIR"
+          cp datafrost "$PKG_DIR/"
+          cp build/linux/datafrost.desktop "$PKG_DIR/"
+          cp assets/icon.png "$PKG_DIR/"
+          cp build/linux/README.txt "$PKG_DIR/"
+          sed -i "s/VERSION_PLACEHOLDER/${{ steps.version.outputs.VERSION }}/g" "$PKG_DIR/README.txt"
+          sed -i "s/VERSION_PLACEHOLDER/${{ steps.version.outputs.VERSION }}/g" "$PKG_DIR/datafrost.desktop"
+          tar -czf "${PKG_DIR}.tar.gz" "$PKG_DIR"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-package
+          path: datafrost-linux-*.tar.gz
+
+  build-macos-amd64:
+    runs-on: macos-13
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install Node dependencies
+        run: bun install
+
+      - name: Bifrost build
+        run: go run github.com/3-lines-studio/bifrost/cmd/build@latest main.go
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION=${{ github.event.inputs.version }}
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Build AMD64 binary
+        run: |
+          GOARCH=amd64 go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o datafrost-amd64 main.go
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-amd64
+          path: datafrost-amd64
+
+  build-macos-arm64:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install Node dependencies
+        run: bun install
+
+      - name: Bifrost build
+        run: go run github.com/3-lines-studio/bifrost/cmd/build@latest main.go
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION=${{ github.event.inputs.version }}
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Build ARM64 binary
+        run: |
+          GOARCH=arm64 go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o datafrost-arm64 main.go
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64
+          path: datafrost-arm64
+
+  build-macos-universal:
+    runs-on: macos-14
+    needs: [build-macos-amd64, build-macos-arm64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download AMD64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-amd64
+          path: ./artifacts
+
+      - name: Download ARM64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-arm64
+          path: ./artifacts
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION=${{ github.event.inputs.version }}
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create universal binary
+        run: |
+          chmod +x ./artifacts/datafrost-amd64 ./artifacts/datafrost-arm64
+          lipo -create ./artifacts/datafrost-amd64 ./artifacts/datafrost-arm64 -output datafrost
+
+      - name: Create macOS package
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          PKG_DIR="datafrost-macos-v${VERSION}"
+          mkdir -p "$PKG_DIR"
+          cp datafrost "$PKG_DIR/"
+          echo "Datafrost ${VERSION} - Database Management GUI" > "$PKG_DIR/README.txt"
+          echo "" >> "$PKG_DIR/README.txt"
+          echo "INSTALLATION:" >> "$PKG_DIR/README.txt"
+          echo "1. Copy binary to a directory in your PATH:" >> "$PKG_DIR/README.txt"
+          echo "   sudo cp datafrost /usr/local/bin/" >> "$PKG_DIR/README.txt"
+          echo "   chmod +x /usr/local/bin/datafrost" >> "$PKG_DIR/README.txt"
+          echo "" >> "$PKG_DIR/README.txt"
+          echo "2. On first run, macOS may show a security warning because the app is unsigned:" >> "$PKG_DIR/README.txt"
+          echo "   - Go to System Preferences > Security & Privacy" >> "$PKG_DIR/README.txt"
+          echo '   - Click "Open Anyway"' >> "$PKG_DIR/README.txt"
+          echo "" >> "$PKG_DIR/README.txt"
+          echo "USAGE:" >> "$PKG_DIR/README.txt"
+          echo "Run: datafrost" >> "$PKG_DIR/README.txt"
+          echo "" >> "$PKG_DIR/README.txt"
+          echo "This universal binary works on both Intel and Apple Silicon Macs." >> "$PKG_DIR/README.txt"
+          tar -czf "${PKG_DIR}.tar.gz" "$PKG_DIR"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-package
+          path: datafrost-macos-*.tar.gz
+
+  build-windows:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install Node dependencies
+        run: bun install
+
+      - name: Bifrost build
+        run: go run github.com/3-lines-studio/bifrost/cmd/build@latest main.go
+
+      - name: Set version
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION=${{ github.event.inputs.version }}
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Build Windows binary
+        shell: bash
+        run: |
+          go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o datafrost.exe main.go
+
+      - name: Create Windows package
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          PKG_DIR="datafrost-windows-v${VERSION}"
+          mkdir -p "$PKG_DIR"
+          cp datafrost.exe "$PKG_DIR/"
+          echo "Datafrost ${VERSION} - Database Management GUI" > "$PKG_DIR/README.txt"
+          echo "" >> "$PKG_DIR/README.txt"
+          echo "PREREQUISITES:" >> "$PKG_DIR/README.txt"
+          echo "This application requires Windows 10 or later with Microsoft Edge installed" >> "$PKG_DIR/README.txt"
+          echo "(WebView2 runtime is usually preinstalled on modern Windows)." >> "$PKG_DIR/README.txt"
+          echo "" >> "$PKG_DIR/README.txt"
+          echo "INSTALLATION:" >> "$PKG_DIR/README.txt"
+          echo "1. Copy datafrost.exe to any directory" >> "$PKG_DIR/README.txt"
+          echo "2. Add that directory to your PATH (optional)" >> "$PKG_DIR/README.txt"
+          echo "3. Run datafrost.exe" >> "$PKG_DIR/README.txt"
+          echo "" >> "$PKG_DIR/README.txt"
+          echo "USAGE:" >> "$PKG_DIR/README.txt"
+          echo "Double-click datafrost.exe or run from command prompt." >> "$PKG_DIR/README.txt"
+          echo "" >> "$PKG_DIR/README.txt"
+          echo "For command line usage:" >> "$PKG_DIR/README.txt"
+          echo "  datafrost.exe --version" >> "$PKG_DIR/README.txt"
+          echo "" >> "$PKG_DIR/README.txt"
+          echo "KNOWN ISSUES:" >> "$PKG_DIR/README.txt"
+          echo "- Unsigned executable: Windows Defender may show a warning on first run." >> "$PKG_DIR/README.txt"
+          echo '  Click "More info" and "Run anyway" if you trust this application.' >> "$PKG_DIR/README.txt"
+          7z a "${PKG_DIR}.zip" "$PKG_DIR"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-package
+          path: datafrost-windows-*.zip
+
+  create-release:
+    needs: [build-linux, build-macos-universal, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+          merge-multiple: false
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION=${{ github.event.inputs.version }}
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Datafrost v${{ steps.version.outputs.VERSION }}
+          tag_name: ${{ github.event_name == 'push' && github.ref || format('v{0}', steps.version.outputs.VERSION) }}
+          files: |
+            ./artifacts/linux-package/datafrost-linux-*.tar.gz
+            ./artifacts/macos-package/datafrost-macos-*.tar.gz
+            ./artifacts/windows-package/datafrost-windows-*.zip
+          body: |
+            ## Datafrost v${{ steps.version.outputs.VERSION }}
+
+            ### Downloads
+
+            **Linux**
+            - Download `datafrost-linux-v${{ steps.version.outputs.VERSION }}.tar.gz`
+            - Extract and run the install script or follow README.txt
+            - Requires: libwebkit2gtk-4.0, libgtk-3
+
+            **macOS**
+            - Download `datafrost-macos-v${{ steps.version.outputs.VERSION }}.tar.gz`
+            - Universal binary (Intel and Apple Silicon)
+            - Unsigned: Allow in System Preferences > Security on first run
+
+            **Windows**
+            - Download `datafrost-windows-v${{ steps.version.outputs.VERSION }}.zip`
+            - Extract and run `datafrost.exe`
+            - Requires: Windows 10+ with Edge (WebView2)
+
+            ### Verification
+
+            Check the binary version:
+            ```bash
+            ./datafrost --version
+            ```
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.VERSION, 'alpha') || contains(steps.version.outputs.VERSION, 'beta') || contains(steps.version.outputs.VERSION, 'rc') }}

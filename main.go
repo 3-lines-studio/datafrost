@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -20,10 +21,19 @@ import (
 	"github.com/go-chi/cors"
 )
 
+var version = "dev"
+
 //go:embed all:.bifrost
 var bifrostFS embed.FS
 
 func main() {
+	showVersion := flag.Bool("version", false, "Show version")
+	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("Datafrost %s\n", version)
+		os.Exit(0)
+	}
 	configDB, err := db.NewConfigDB()
 	if err != nil {
 		log.Fatalf("Failed to initialize config database: %v", err)
