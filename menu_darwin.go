@@ -1,6 +1,9 @@
 package main
 
 /*
+#cgo CFLAGS: -x objective-c -fobjc-arc
+#cgo LDFLAGS: -framework Cocoa
+
 #include <objc/objc-runtime.h>
 #include <Cocoa/Cocoa.h>
 
