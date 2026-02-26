@@ -12,7 +12,7 @@ on:
 
 jobs:
   build-linux:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,7 +25,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
 
       - name: Install Node dependencies
         run: bun install
@@ -66,8 +66,8 @@ jobs:
           name: linux-package
           path: datafrost-linux-*.tar.gz
 
-  build-macos-amd64:
-    runs-on: macos-13
+  build-macos:
+    runs-on: macos-14
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -103,88 +103,14 @@ jobs:
         run: |
           GOARCH=amd64 go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o datafrost-amd64 main.go
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-amd64
-          path: datafrost-amd64
-
-  build-macos-arm64:
-    runs-on: macos-14
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: 'go.mod'
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install Node dependencies
-        run: bun install
-
-      - name: Bifrost build
-        run: go run github.com/3-lines-studio/bifrost/cmd/build@latest main.go
-
-      - name: Set version
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" == "push" ]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
-          else
-            VERSION=${{ github.event.inputs.version }}
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Building version: $VERSION"
-
       - name: Build ARM64 binary
         run: |
           GOARCH=arm64 go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o datafrost-arm64 main.go
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-arm64
-          path: datafrost-arm64
-
-  build-macos-universal:
-    runs-on: macos-14
-    needs: [build-macos-amd64, build-macos-arm64]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download AMD64 artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-amd64
-          path: ./artifacts
-
-      - name: Download ARM64 artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-arm64
-          path: ./artifacts
-
-      - name: Set version
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" == "push" ]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
-          else
-            VERSION=${{ github.event.inputs.version }}
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
       - name: Create universal binary
         run: |
-          chmod +x ./artifacts/datafrost-amd64 ./artifacts/datafrost-arm64
-          lipo -create ./artifacts/datafrost-amd64 ./artifacts/datafrost-arm64 -output datafrost
+          chmod +x datafrost-amd64 datafrost-arm64
+          lipo -create datafrost-amd64 datafrost-arm64 -output datafrost
 
       - name: Create macOS package
         run: |
@@ -285,7 +211,7 @@ jobs:
           path: datafrost-windows-*.zip
 
   create-release:
-    needs: [build-linux, build-macos-universal, build-windows]
+    needs: [build-linux, build-macos, build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -323,7 +249,7 @@ jobs:
             **Linux**
             - Download `datafrost-linux-v${{ steps.version.outputs.VERSION }}.tar.gz`
             - Extract and run the install script or follow README.txt
-            - Requires: libwebkit2gtk-4.1, libgtk-3 (Ubuntu 24.04+) or libwebkit2gtk-4.0 (older distros)
+            - Requires: libwebkit2gtk-4.0, libgtk-3
 
             **macOS**
             - Download `datafrost-macos-v${{ steps.version.outputs.VERSION }}.tar.gz`
