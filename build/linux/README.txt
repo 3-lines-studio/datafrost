@@ -3,7 +3,10 @@ Datafrost VERSION_PLACEHOLDER - Database Management GUI
 PREREQUISITES:
 This application requires WebKit2GTK to be installed on your system.
 
-Install on Ubuntu/Debian:
+Install on Ubuntu 24.04+:
+  sudo apt-get install libwebkit2gtk-4.1-0 libgtk-3-0
+
+Install on Ubuntu 22.04/Debian:
   sudo apt-get install libwebkit2gtk-4.0-37 libgtk-3-0
 
 Install on Fedora/RHEL:
