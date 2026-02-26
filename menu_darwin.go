@@ -12,6 +12,18 @@ void setupMacMenu() {
         NSApplication *app = [NSApplication sharedApplication];
         NSMenu *mainMenu = [[NSMenu alloc] init];
 
+        // App Menu (shows as "Datafrost" in menu bar)
+        NSMenuItem *appMenuItem = [[NSMenuItem alloc] init];
+        [mainMenu addItem:appMenuItem];
+        NSMenu *appMenu = [[NSMenu alloc] initWithTitle:@"Datafrost"];
+        [appMenuItem setSubmenu:appMenu];
+
+        // Quit Datafrost (Cmd+Q)
+        NSMenuItem *quitItem = [[NSMenuItem alloc] initWithTitle:@"Quit Datafrost"
+                                                            action:@selector(terminate:)
+                                                     keyEquivalent:@"q"];
+        [appMenu addItem:quitItem];
+
         // Edit Menu
         NSMenuItem *editMenuItem = [[NSMenuItem alloc] init];
         [mainMenu addItem:editMenuItem];
