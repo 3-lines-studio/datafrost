@@ -34,6 +34,22 @@ func main() {
 		fmt.Printf("Datafrost %s\n", version)
 		os.Exit(0)
 	}
+
+	if len(flag.Args()) > 0 && flag.Args()[0] == "reset" {
+		path := db.DBPath()
+		fmt.Printf("Resetting database at %s...\n", path)
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			log.Fatalf("Failed to remove database: %v", err)
+		}
+		configDB, err := db.NewConfigDB()
+		if err != nil {
+			log.Fatalf("Failed to recreate database: %v", err)
+		}
+		configDB.Close()
+		fmt.Println("Database reset successfully.")
+		os.Exit(0)
+	}
+
 	configDB, err := db.NewConfigDB()
 	if err != nil {
 		log.Fatalf("Failed to initialize config database: %v", err)

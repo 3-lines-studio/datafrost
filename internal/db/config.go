@@ -13,6 +13,14 @@ type ConfigDB struct {
 	db *sql.DB
 }
 
+func DBPath() string {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		configDir = "."
+	}
+	return filepath.Join(configDir, "datafrost", "config.db")
+}
+
 func NewConfigDB() (*ConfigDB, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
@@ -20,6 +28,7 @@ func NewConfigDB() (*ConfigDB, error) {
 	}
 
 	appDir := filepath.Join(configDir, "datafrost")
+
 	if err := os.MkdirAll(appDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create config directory: %w", err)
 	}

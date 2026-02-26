@@ -10,3 +10,6 @@ start: build
 
 doctor:
 	go run github.com/3-lines-studio/bifrost/cmd/doctor@latest .
+
+reset:
+	go run . reset
