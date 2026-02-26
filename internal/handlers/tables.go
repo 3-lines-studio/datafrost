@@ -126,6 +126,45 @@ func (h *TablesHandler) GetData(w http.ResponseWriter, r *http.Request) {
 	JSONResponse(w, http.StatusOK, result)
 }
 
+func (h *TablesHandler) GetSchema(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		JSONError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+
+	tableName := chi.URLParam(r, "name")
+	if tableName == "" {
+		JSONError(w, http.StatusBadRequest, "table name is required")
+		return
+	}
+
+	conn, err := h.store.GetByID(id)
+	if err != nil {
+		JSONError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if conn == nil {
+		JSONError(w, http.StatusNotFound, "connection not found")
+		return
+	}
+
+	adapter, err := h.cache.Get(conn.ID, conn.Type, conn.Credentials)
+	if err != nil {
+		JSONError(w, http.StatusBadRequest, "failed to connect: "+err.Error())
+		return
+	}
+
+	schema, err := adapter.GetTableSchema(tableName)
+	if err != nil {
+		JSONError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	JSONResponse(w, http.StatusOK, schema)
+}
+
 type QueryRequest struct {
 	Query string `json:"query"`
 }

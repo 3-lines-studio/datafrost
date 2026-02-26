@@ -138,7 +138,6 @@ func (a *TursoAdapter) ExecuteQuery(query string) (*models.QueryResult, error) {
 	return a.executeQueryWithArgs(query, nil)
 }
 
-
 func (a *TursoAdapter) executeQueryWithArgs(query string, args []any) (*models.QueryResult, error) {
 	upperQuery := strings.ToUpper(strings.TrimSpace(query))
 	isSelect := strings.HasPrefix(upperQuery, "SELECT") || strings.HasPrefix(upperQuery, "WITH") || strings.HasPrefix(upperQuery, "PRAGMA")
@@ -199,6 +198,89 @@ func (a *TursoAdapter) getFilteredTableCount(tableName, whereClause string, args
 		return 0, fmt.Errorf("failed to count rows: %w", err)
 	}
 	return count, nil
+}
+
+func (a *TursoAdapter) GetTableSchema(tableName string) (*models.TableSchema, error) {
+	schema := &models.TableSchema{
+		TableName: tableName,
+	}
+
+	escapedTableName := strings.ReplaceAll(tableName, "'", "''")
+
+	columnRows, err := a.conn.Query(fmt.Sprintf("PRAGMA table_info('%s')", escapedTableName))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get columns: %w", err)
+	}
+	defer columnRows.Close()
+
+	var columns []models.ColumnInfo
+	for columnRows.Next() {
+		var col models.ColumnInfo
+		var cid int
+		var notNull int
+		var pk int
+		var dfltValue sql.NullString
+
+		if err := columnRows.Scan(&cid, &col.Name, &col.Type, &notNull, &dfltValue, &pk); err != nil {
+			return nil, fmt.Errorf("failed to scan column: %w", err)
+		}
+
+		col.Nullable = notNull == 0
+		col.IsPrimaryKey = pk == 1
+		if dfltValue.Valid {
+			col.DefaultValue = dfltValue.String
+		}
+
+		columns = append(columns, col)
+	}
+	schema.Columns = columns
+
+	indexListRows, err := a.conn.Query(fmt.Sprintf("PRAGMA index_list('%s')", escapedTableName))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get index list: %w", err)
+	}
+	defer indexListRows.Close()
+
+	var indexes []models.IndexInfo
+	for indexListRows.Next() {
+		var seq int
+		var indexName string
+		var unique int
+		var origin string
+		var partial int
+
+		if err := indexListRows.Scan(&seq, &indexName, &unique, &origin, &partial); err != nil {
+			return nil, fmt.Errorf("failed to scan index list: %w", err)
+		}
+
+		idx := models.IndexInfo{
+			Name:   indexName,
+			Unique: unique == 1,
+		}
+
+		escapedIndexName := strings.ReplaceAll(indexName, "'", "''")
+		indexInfoRows, err := a.conn.Query(fmt.Sprintf("PRAGMA index_info('%s')", escapedIndexName))
+		if err != nil {
+			continue
+		}
+
+		var cols []string
+		for indexInfoRows.Next() {
+			var seqno int
+			var cid int
+			var colName string
+			if err := indexInfoRows.Scan(&seqno, &cid, &colName); err == nil && colName != "" {
+				cols = append(cols, colName)
+			}
+		}
+		indexInfoRows.Close()
+
+		idx.Columns = cols
+		indexes = append(indexes, idx)
+	}
+	schema.Indexes = indexes
+
+	return schema, nil
 }
 
 func buildTursoWhereClause(filters []models.Filter) (string, []any) {

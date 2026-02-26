@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { Copy } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -8,6 +9,13 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
+import { Button } from "../ui/button";
 
 import type { QueryResult } from "@/types";
 
@@ -16,6 +24,7 @@ interface ResultsTableProps {
   loading: boolean;
   error: string | null;
   onPageChange?: (page: number) => void;
+  onCopy?: (format: "csv" | "json") => void;
 }
 
 function formatValue(value: any): string {
@@ -25,7 +34,42 @@ function formatValue(value: any): string {
   return String(value);
 }
 
-function VirtualTable({ result, onPageChange }: { result: QueryResult; onPageChange?: (page: number) => void }) {
+function CopyDropdown({
+  onCopy,
+}: {
+  onCopy?: (format: "csv" | "json") => void;
+}) {
+  if (!onCopy) return null;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-7 gap-1">
+          <Copy className="h-3.5 w-3.5" />
+          Copy
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => onCopy("csv")}>
+          Copy as CSV
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onCopy("json")}>
+          Copy as JSON
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function VirtualTable({
+  result,
+  onPageChange,
+  onCopy,
+}: {
+  result: QueryResult;
+  onPageChange?: (page: number) => void;
+  onCopy?: (format: "csv" | "json") => void;
+}) {
   const parentRef = useRef<HTMLDivElement>(null);
 
   const virtualizer = useVirtualizer({
@@ -100,27 +144,30 @@ function VirtualTable({ result, onPageChange }: { result: QueryResult; onPageCha
         <div>
           {result.count} of {result.total} rows
         </div>
-        {onPageChange && totalPages > 1 && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onPageChange(currentPage - 1)}
-              disabled={currentPage <= 1}
-              className="px-2 py-1 rounded border border-gray-200 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800"
-            >
-              Previous
-            </button>
-            <span className="px-2">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={() => onPageChange(currentPage + 1)}
-              disabled={currentPage >= totalPages}
-              className="px-2 py-1 rounded border border-gray-200 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800"
-            >
-              Next
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <CopyDropdown onCopy={onCopy} />
+          {onPageChange && totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onPageChange(currentPage - 1)}
+                disabled={currentPage <= 1}
+                className="px-2 py-1 rounded border border-gray-200 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Previous
+              </button>
+              <span className="px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => onPageChange(currentPage + 1)}
+                disabled={currentPage >= totalPages}
+                className="px-2 py-1 rounded border border-gray-200 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -131,6 +178,7 @@ export function ResultsTable({
   loading,
   error,
   onPageChange,
+  onCopy,
 }: ResultsTableProps) {
   if (loading && !result) {
     return (
@@ -156,7 +204,9 @@ export function ResultsTable({
     return (
       <div className="flex flex-col h-full border-t border-gray-200 dark:border-gray-800">
         <div className="flex items-center justify-center h-32">
-          <span className="text-sm text-gray-500">Run a query to see results</span>
+          <span className="text-sm text-gray-500">
+            Run a query to see results
+          </span>
         </div>
       </div>
     );
@@ -174,7 +224,11 @@ export function ResultsTable({
 
   return (
     <div className="flex flex-col h-full border-t border-gray-200 dark:border-gray-800">
-      <VirtualTable result={result} onPageChange={onPageChange} />
+      <VirtualTable
+        result={result}
+        onPageChange={onPageChange}
+        onCopy={onCopy}
+      />
     </div>
   );
 }

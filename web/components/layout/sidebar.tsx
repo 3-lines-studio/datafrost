@@ -11,6 +11,7 @@ import {
   Moon,
   MoreVertical,
   Loader2,
+  FileSearch,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import {
@@ -44,6 +45,7 @@ interface SidebarProps {
   onRenameSavedQuery: (query: SavedQuery) => void;
   onDeleteSavedQuery: (query: SavedQuery) => void;
   onToggleTheme: () => void;
+  onViewSchema?: (tableName: string) => void;
 }
 
 export function Sidebar({
@@ -67,6 +69,7 @@ export function Sidebar({
   onRenameSavedQuery,
   onDeleteSavedQuery,
   onToggleTheme,
+  onViewSchema,
 }: SidebarProps) {
   return (
     <div className="h-full border-r border-gray-200 dark:border-gray-800 flex flex-col bg-gray-50 dark:bg-gray-950">
@@ -192,11 +195,43 @@ export function Sidebar({
                         {tables.map((table) => (
                           <div
                             key={table.name}
-                            onClick={() => onSelectTable(table.name)}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-sm hover:bg-gray-100 dark:hover:bg-gray-900"
+                            className="group flex items-center justify-between px-2 py-1.5 rounded-md cursor-pointer text-sm hover:bg-gray-100 dark:hover:bg-gray-900"
                           >
-                            <Table className="h-3.5 w-3.5 text-gray-500" />
-                            <span className="truncate">{table.name}</span>
+                            <div
+                              className="flex items-center gap-2 flex-1 min-w-0"
+                              onClick={() => onSelectTable(table.name)}
+                            >
+                              <Table className="h-3.5 w-3.5 text-gray-500" />
+                              <span className="truncate">{table.name}</span>
+                            </div>
+                            {onViewSchema && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <MoreVertical className="h-3 w-3 text-gray-500" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                  align="end"
+                                  className="w-36"
+                                >
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onViewSchema(table.name);
+                                    }}
+                                  >
+                                    <FileSearch className="mr-2 h-4 w-4" />
+                                    View Schema
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
                           </div>
                         ))}
                       </div>

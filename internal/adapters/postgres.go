@@ -217,7 +217,6 @@ func (a *PostgresAdapter) ExecuteQuery(query string) (*models.QueryResult, error
 	return a.executeQueryWithArgs(query, nil)
 }
 
-
 func (a *PostgresAdapter) executeQueryWithArgs(query string, args []any) (*models.QueryResult, error) {
 	upperQuery := strings.ToUpper(strings.TrimSpace(query))
 	isSelect := strings.HasPrefix(upperQuery, "SELECT") || strings.HasPrefix(upperQuery, "WITH")
@@ -278,6 +277,153 @@ func (a *PostgresAdapter) getFilteredTableCount(tableName, whereClause string, a
 		return 0, fmt.Errorf("failed to count rows: %w", err)
 	}
 	return count, nil
+}
+
+func (a *PostgresAdapter) GetTableSchema(tableName string) (*models.TableSchema, error) {
+	schema := &models.TableSchema{
+		TableName: tableName,
+	}
+
+	columnRows, err := a.conn.Query(`
+		SELECT 
+			column_name,
+			data_type,
+			is_nullable = 'YES',
+			COALESCE(column_default, '') as column_default,
+			false as is_primary_key
+		FROM information_schema.columns
+		WHERE table_name = $1 AND table_schema = 'public'
+		ORDER BY ordinal_position
+	`, tableName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get columns: %w", err)
+	}
+	defer columnRows.Close()
+
+	var columns []models.ColumnInfo
+	for columnRows.Next() {
+		var col models.ColumnInfo
+		if err := columnRows.Scan(&col.Name, &col.Type, &col.Nullable, &col.DefaultValue, &col.IsPrimaryKey); err != nil {
+			return nil, fmt.Errorf("failed to scan column: %w", err)
+		}
+		columns = append(columns, col)
+	}
+
+	pkRows, err := a.conn.Query(`
+		SELECT kcu.column_name
+		FROM information_schema.table_constraints tc
+		JOIN information_schema.key_column_usage kcu 
+			ON tc.constraint_name = kcu.constraint_name
+		WHERE tc.table_name = $1 
+			AND tc.table_schema = 'public'
+			AND tc.constraint_type = 'PRIMARY KEY'
+	`, tableName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get primary keys: %w", err)
+	}
+	defer pkRows.Close()
+
+	pkColumns := make(map[string]bool)
+	for pkRows.Next() {
+		var colName string
+		if err := pkRows.Scan(&colName); err != nil {
+			return nil, fmt.Errorf("failed to scan primary key: %w", err)
+		}
+		pkColumns[colName] = true
+	}
+
+	for i := range columns {
+		if pkColumns[columns[i].Name] {
+			columns[i].IsPrimaryKey = true
+		}
+	}
+	schema.Columns = columns
+
+	indexRows, err := a.conn.Query(`
+		SELECT 
+			i.relname as index_name,
+			ix.indisunique as is_unique
+		FROM pg_index ix
+		JOIN pg_class i ON i.oid = ix.indexrelid
+		JOIN pg_class t ON t.oid = ix.indrelid
+		WHERE t.relname = $1
+		GROUP BY i.relname, ix.indisunique
+	`, tableName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get indexes: %w", err)
+	}
+	defer indexRows.Close()
+
+	var indexes []models.IndexInfo
+	for indexRows.Next() {
+		var idx models.IndexInfo
+		if err := indexRows.Scan(&idx.Name, &idx.Unique); err != nil {
+			return nil, fmt.Errorf("failed to scan index: %w", err)
+		}
+
+		indexColRows, err := a.conn.Query(`
+			SELECT a.attname
+			FROM pg_index ix
+			JOIN pg_class i ON i.oid = ix.indexrelid
+			JOIN pg_class t ON t.oid = ix.indrelid
+			JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey)
+			WHERE i.relname = $1
+			ORDER BY array_position(ix.indkey, a.attnum)
+		`, idx.Name)
+		if err != nil {
+			continue
+		}
+
+		var cols []string
+		for indexColRows.Next() {
+			var colName string
+			if err := indexColRows.Scan(&colName); err == nil {
+				cols = append(cols, colName)
+			}
+		}
+		indexColRows.Close()
+
+		idx.Columns = cols
+		indexes = append(indexes, idx)
+	}
+	schema.Indexes = indexes
+
+	constraintRows, err := a.conn.Query(`
+		SELECT 
+			con.conname as constraint_name,
+			con.contype::text as constraint_type,
+			pg_get_constraintdef(con.oid) as definition
+		FROM pg_constraint con
+		JOIN pg_class t ON t.oid = con.conrelid
+		WHERE t.relname = $1 
+			AND con.contype IN ('f', 'u', 'c')
+	`, tableName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get constraints: %w", err)
+	}
+	defer constraintRows.Close()
+
+	var constraints []models.ConstraintInfo
+	for constraintRows.Next() {
+		var c models.ConstraintInfo
+		var typeStr string
+		if err := constraintRows.Scan(&c.Name, &typeStr, &c.Definition); err != nil {
+			continue
+		}
+		switch typeStr {
+		case "f":
+			c.Type = "FOREIGN KEY"
+		case "u":
+			c.Type = "UNIQUE"
+		case "c":
+			c.Type = "CHECK"
+		}
+		c.Column = ""
+		constraints = append(constraints, c)
+	}
+	schema.Constraints = constraints
+
+	return schema, nil
 }
 
 func buildPostgresWhereClause(filters []models.Filter) (string, []any) {

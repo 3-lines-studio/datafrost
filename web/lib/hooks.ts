@@ -9,6 +9,7 @@ import type {
   CreateConnectionRequest,
   UpdateConnectionRequest,
   TestConnectionRequest,
+  TableSchema,
 } from "@/types";
 
 const API_BASE = "";
@@ -454,5 +455,27 @@ export function useDeleteSavedQueryMutation() {
         queryKey: ["savedQueries", variables.connectionId],
       });
     },
+  });
+}
+
+const fetchTableSchema = async (
+  connectionId: number,
+  tableName: string,
+): Promise<TableSchema> => {
+  const res = await fetch(
+    `${API_BASE}/api/connections/${connectionId}/tables/${encodeURIComponent(tableName)}/schema`,
+  );
+  if (!res.ok) throw new Error("Failed to fetch table schema");
+  return res.json();
+};
+
+export function useTableSchemaQuery(
+  connectionId: number | null,
+  tableName: string | null,
+) {
+  return useQuery({
+    queryKey: ["tableSchema", connectionId, tableName],
+    queryFn: () => fetchTableSchema(connectionId!, tableName!),
+    enabled: !!connectionId && !!tableName,
   });
 }

@@ -91,6 +91,7 @@ func main() {
 				r.Post("/test", connectionsHandler.TestExisting)
 				r.Get("/tables", tablesHandler.List)
 				r.Get("/tables/{name}", tablesHandler.GetData)
+				r.Get("/tables/{name}/schema", tablesHandler.GetSchema)
 				r.Post("/query", queryHandler.Execute)
 				r.Get("/tabs", tabsHandler.Get)
 				r.Post("/tabs", tabsHandler.Save)
