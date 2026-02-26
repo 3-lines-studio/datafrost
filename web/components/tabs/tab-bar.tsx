@@ -46,6 +46,12 @@ export function TabBar({
               <div
                 key={tab.id}
                 onClick={() => onTabClick(tab.id)}
+                onAuxClick={(e) => {
+                  if (e.button === 1) {
+                    e.preventDefault();
+                    onTabClose(tab.id);
+                  }
+                }}
                 className={`
                   group flex items-center gap-2 px-3 py-2 cursor-pointer border-r border-gray-200 dark:border-gray-800
                   min-w-[120px] max-w-[200px] select-none

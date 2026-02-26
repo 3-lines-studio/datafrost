@@ -24,6 +24,7 @@ type Tab struct {
 	ConnectionID int    `json:"connectionId"`
 	TableName    string `json:"tableName,omitempty"`
 	Query        string `json:"query,omitempty"`
+	Page         int    `json:"page,omitempty"`
 }
 
 func (h *TabsHandler) Get(w http.ResponseWriter, r *http.Request) {

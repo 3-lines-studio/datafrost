@@ -15,7 +15,9 @@ export interface QueryResult {
   columns: string[];
   rows: any[][];
   count: number;
-  limited: boolean;
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface ConnectionsResponse {
@@ -43,6 +45,7 @@ export interface Tab {
   connectionId: number;
   tableName?: string;
   query?: string;
+  page?: number;
 }
 
 export interface SavedQuery {

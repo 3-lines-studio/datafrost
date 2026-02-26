@@ -14,6 +14,7 @@ interface ResultsTableProps {
   result: QueryResult | null;
   loading: boolean;
   error: string | null;
+  onPageChange?: (page: number) => void;
 }
 
 function formatValue(value: any): string {
@@ -23,7 +24,30 @@ function formatValue(value: any): string {
   return String(value);
 }
 
-export function ResultsTable({ result, loading, error }: ResultsTableProps) {
+export function ResultsTable({
+  result,
+  loading,
+  error,
+  onPageChange,
+}: ResultsTableProps) {
+  const totalPages = result?.total ? Math.ceil(result.total / result.limit) : 0;
+  const currentPage = result?.page || 1;
+
+  const canGoPrevious = currentPage > 1;
+  const canGoNext = currentPage < totalPages;
+
+  const handlePrevious = () => {
+    if (canGoPrevious && onPageChange) {
+      onPageChange(currentPage - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (canGoNext && onPageChange) {
+      onPageChange(currentPage + 1);
+    }
+  };
+
   const content = useMemo(() => {
     if (loading) {
       return (
@@ -90,23 +114,47 @@ export function ResultsTable({ result, loading, error }: ResultsTableProps) {
             </TableBody>
           </Table>
         </div>
-        <div className="h-8 flex items-center px-4 border-t border-gray-200 dark:border-gray-800 text-xs text-gray-500">
-          {result.count} rows
-          {result.limited && (
-            <span className="ml-2 text-amber-600">(showing max 100)</span>
+        <div className="h-10 flex items-center justify-between px-4 border-t border-gray-200 dark:border-gray-800 text-xs text-gray-500">
+          <div>
+            {result.count} of {result.total} rows
+          </div>
+          {onPageChange && totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handlePrevious}
+                disabled={!canGoPrevious}
+                className="px-2 py-1 rounded border border-gray-200 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Previous
+              </button>
+              <span className="px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={handleNext}
+                disabled={!canGoNext}
+                className="px-2 py-1 rounded border border-gray-200 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Next
+              </button>
+            </div>
           )}
         </div>
       </div>
     );
-  }, [result, loading, error]);
+  }, [
+    result,
+    loading,
+    error,
+    onPageChange,
+    totalPages,
+    currentPage,
+    canGoPrevious,
+    canGoNext,
+  ]);
 
   return (
     <div className="flex flex-col h-full border-t border-gray-200 dark:border-gray-800">
-      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Results
-        </span>
-      </div>
       <div className="flex-1 min-h-0 min-w-0">{content}</div>
     </div>
   );

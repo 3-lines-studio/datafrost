@@ -18,9 +18,14 @@ const fetchTables = async (connectionId: number): Promise<TableInfo[]> => {
 const fetchTableData = async (
   connectionId: number,
   tableName: string,
+  page: number = 1,
 ): Promise<QueryResult> => {
+  const params = new URLSearchParams();
+  params.set("page", page.toString());
+  params.set("limit", "25");
+
   const res = await fetch(
-    `${API_BASE}/api/connections/${connectionId}/tables/${encodeURIComponent(tableName)}`,
+    `${API_BASE}/api/connections/${connectionId}/tables/${encodeURIComponent(tableName)}?${params.toString()}`,
   );
   if (!res.ok) throw new Error("Failed to fetch table data");
   return res.json();
@@ -124,10 +129,11 @@ export function useTablesQuery(connectionId: number | null) {
 export function useTableDataQuery(
   connectionId: number | null,
   tableName: string | null,
+  page: number = 1,
 ) {
   return useQuery({
-    queryKey: ["tableData", connectionId, tableName],
-    queryFn: () => fetchTableData(connectionId!, tableName!),
+    queryKey: ["tableData", connectionId, tableName, page],
+    queryFn: () => fetchTableData(connectionId!, tableName!, page),
     enabled: !!connectionId && !!tableName,
   });
 }

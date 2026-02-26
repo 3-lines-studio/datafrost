@@ -10,6 +10,7 @@ import {
   Sun,
   Moon,
   MoreVertical,
+  Loader2,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import {
@@ -25,6 +26,7 @@ import { SavedQueriesSection } from "../queries/saved-queries-section";
 interface SidebarProps {
   connections: Connection[];
   tables: TableInfo[];
+  tablesLoading: boolean;
   savedQueries: SavedQuery[];
   savedQueriesLoading: boolean;
   selectedConnection: number | null;
@@ -47,6 +49,7 @@ interface SidebarProps {
 export function Sidebar({
   connections,
   tables,
+  tablesLoading,
   savedQueries,
   savedQueriesLoading,
   selectedConnection,
@@ -180,7 +183,11 @@ export function Sidebar({
 
                 {selectedConnection === conn.id && (
                   <>
-                    {tables?.length > 0 && (
+                    {tablesLoading ? (
+                      <div className="mt-2 flex items-center justify-center py-4">
+                        <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+                      </div>
+                    ) : tables?.length > 0 ? (
                       <div className="mt-1 space-y-1">
                         {tables.map((table) => (
                           <div
@@ -193,7 +200,7 @@ export function Sidebar({
                           </div>
                         ))}
                       </div>
-                    )}
+                    ) : null}
                     <SavedQueriesSection
                       queries={savedQueries}
                       isLoading={savedQueriesLoading}

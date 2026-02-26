@@ -90,6 +90,7 @@ function PageContent() {
     addTab,
     closeTab,
     updateTab,
+    setTabPage,
     clearSelection,
   } = useAppStore();
 
@@ -157,6 +158,7 @@ function PageContent() {
   const { data: tableData } = useTableDataQuery(
     selectedConnection,
     activeTab?.type === "table" ? activeTab.tableName || null : null,
+    activeTab?.type === "table" ? activeTab.page || 1 : 1,
   );
 
   useEffect(() => {
@@ -521,6 +523,28 @@ function PageContent() {
     });
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === "w") {
+          e.preventDefault();
+          if (activeTabId) {
+            handleTabClose(activeTabId);
+          }
+        }
+        if (e.key === "t") {
+          e.preventDefault();
+          if (selectedConnection) {
+            handleNewQueryTab();
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeTabId, handleTabClose, handleNewQueryTab, selectedConnection]);
+
   const handleQueryChange = (tabId: string, query: string) => {
     updateTab(tabId, { query });
   };
@@ -564,6 +588,8 @@ function PageContent() {
           result={currentTabResult?.result || null}
           loading={currentTabResult?.loading || tablesLoading}
           error={currentTabResult?.error || null}
+          page={activeTab.page || 1}
+          onPageChange={(page) => setTabPage(activeTab.id, page)}
         />
       );
     }
@@ -603,6 +629,7 @@ function PageContent() {
             <Sidebar
               connections={connections}
               tables={tables || []}
+              tablesLoading={tablesLoading}
               savedQueries={savedQueriesData?.queries || []}
               savedQueriesLoading={savedQueriesLoading}
               selectedConnection={selectedConnection}

@@ -61,9 +61,32 @@ func (c *Client) ListTables() ([]models.TableInfo, error) {
 	return tables, rows.Err()
 }
 
-func (c *Client) GetTableData(tableName string) (*models.QueryResult, error) {
-	query := fmt.Sprintf("SELECT * FROM %s LIMIT 100", tableName)
-	return c.ExecuteQuery(query)
+func (c *Client) GetTableCount(tableName string) (int, error) {
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM \"%s\"", tableName)
+	var count int
+	err := c.conn.QueryRow(countQuery).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count rows: %w", err)
+	}
+	return count, nil
+}
+
+func (c *Client) GetTableData(tableName string, limit, offset int) (*models.QueryResult, error) {
+	count, err := c.GetTableCount(tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	query := fmt.Sprintf("SELECT * FROM \"%s\" LIMIT %d OFFSET %d", tableName, limit, offset)
+	result, err := c.ExecuteQuery(query)
+	if err != nil {
+		return nil, err
+	}
+
+	result.Total = count
+	result.Page = offset/limit + 1
+	result.Limit = limit
+	return result, nil
 }
 
 func (c *Client) ExecuteQuery(query string) (*models.QueryResult, error) {
@@ -109,6 +132,8 @@ func (c *Client) ExecuteQuery(query string) (*models.QueryResult, error) {
 		Columns: columns,
 		Rows:    resultRows,
 		Count:   len(resultRows),
-		Limited: len(resultRows) == 100,
+		Total:   len(resultRows),
+		Page:    1,
+		Limit:   len(resultRows),
 	}, nil
 }

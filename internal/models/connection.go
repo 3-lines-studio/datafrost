@@ -36,5 +36,7 @@ type QueryResult struct {
 	Columns []string `json:"columns"`
 	Rows    [][]any  `json:"rows"`
 	Count   int      `json:"count"`
-	Limited bool     `json:"limited"`
+	Total   int      `json:"total"`
+	Page    int      `json:"page"`
+	Limit   int      `json:"limit"`
 }

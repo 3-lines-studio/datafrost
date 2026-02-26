@@ -5,12 +5,25 @@ interface TableTabProps {
   result: QueryResult | null;
   loading: boolean;
   error: string | null;
+  page?: number;
+  onPageChange?: (page: number) => void;
 }
 
-export function TableTab({ result, loading, error }: TableTabProps) {
+export function TableTab({
+  result,
+  loading,
+  error,
+  page,
+  onPageChange,
+}: TableTabProps) {
   return (
     <div className="h-full">
-      <ResultsTable result={result} loading={loading} error={error} />
+      <ResultsTable
+        result={result}
+        loading={loading}
+        error={error}
+        onPageChange={onPageChange}
+      />
     </div>
   );
 }

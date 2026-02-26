@@ -83,7 +83,28 @@ func (h *TablesHandler) GetData(w http.ResponseWriter, r *http.Request) {
 	}
 	defer client.Close()
 
-	result, err := client.GetTableData(tableName)
+	limitStr := r.URL.Query().Get("limit")
+	pageStr := r.URL.Query().Get("page")
+
+	limit := 25
+	if limitStr != "" {
+		parsedLimit, err := strconv.Atoi(limitStr)
+		if err == nil && parsedLimit > 0 {
+			limit = parsedLimit
+		}
+	}
+
+	page := 1
+	if pageStr != "" {
+		parsedPage, err := strconv.Atoi(pageStr)
+		if err == nil && parsedPage > 0 {
+			page = parsedPage
+		}
+	}
+
+	offset := (page - 1) * limit
+
+	result, err := client.GetTableData(tableName, limit, offset)
 	if err != nil {
 		JSONError(w, http.StatusInternalServerError, err.Error())
 		return
