@@ -142,6 +142,8 @@ func main() {
 	w.SetSize(1200, 800, webview.HintNone)
 	w.Navigate(localURL)
 
+	setupMacEditMenu()
+
 	w.Run()
 
 	if err := server.Shutdown(context.Background()); err != nil {
