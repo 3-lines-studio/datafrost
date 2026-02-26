@@ -135,8 +135,9 @@ func (a *TursoAdapter) GetTableData(tableName string, limit, offset int, filters
 }
 
 func (a *TursoAdapter) ExecuteQuery(query string) (*models.QueryResult, error) {
-	return a.executeQueryWithArgs(query, nil)
+	return a.executeQueryWithArgs(applyRowLimit(query), nil)
 }
+
 
 func (a *TursoAdapter) executeQueryWithArgs(query string, args []any) (*models.QueryResult, error) {
 	upperQuery := strings.ToUpper(strings.TrimSpace(query))

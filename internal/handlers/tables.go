@@ -13,14 +13,14 @@ import (
 )
 
 type TablesHandler struct {
-	store   *db.ConnectionStore
-	factory *adapters.Factory
+	store *db.ConnectionStore
+	cache *adapters.AdapterCache
 }
 
-func NewTablesHandler(store *db.ConnectionStore) *TablesHandler {
+func NewTablesHandler(store *db.ConnectionStore, cache *adapters.AdapterCache) *TablesHandler {
 	return &TablesHandler{
-		store:   store,
-		factory: adapters.NewFactory(),
+		store: store,
+		cache: cache,
 	}
 }
 
@@ -42,14 +42,8 @@ func (h *TablesHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	adapter, err := h.factory.GetAdapter(conn.Type)
+	adapter, err := h.cache.Get(conn.ID, conn.Type, conn.Credentials)
 	if err != nil {
-		JSONError(w, http.StatusBadRequest, "failed to get adapter: "+err.Error())
-		return
-	}
-	defer adapter.Close()
-
-	if err := adapter.Connect(conn.Credentials); err != nil {
 		JSONError(w, http.StatusBadRequest, "failed to connect: "+err.Error())
 		return
 	}
@@ -87,14 +81,8 @@ func (h *TablesHandler) GetData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	adapter, err := h.factory.GetAdapter(conn.Type)
+	adapter, err := h.cache.Get(conn.ID, conn.Type, conn.Credentials)
 	if err != nil {
-		JSONError(w, http.StatusBadRequest, "failed to get adapter: "+err.Error())
-		return
-	}
-	defer adapter.Close()
-
-	if err := adapter.Connect(conn.Credentials); err != nil {
 		JSONError(w, http.StatusBadRequest, "failed to connect: "+err.Error())
 		return
 	}
@@ -143,14 +131,14 @@ type QueryRequest struct {
 }
 
 type QueryHandler struct {
-	store   *db.ConnectionStore
-	factory *adapters.Factory
+	store *db.ConnectionStore
+	cache *adapters.AdapterCache
 }
 
-func NewQueryHandler(store *db.ConnectionStore) *QueryHandler {
+func NewQueryHandler(store *db.ConnectionStore, cache *adapters.AdapterCache) *QueryHandler {
 	return &QueryHandler{
-		store:   store,
-		factory: adapters.NewFactory(),
+		store: store,
+		cache: cache,
 	}
 }
 
@@ -183,14 +171,8 @@ func (h *QueryHandler) Execute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	adapter, err := h.factory.GetAdapter(conn.Type)
+	adapter, err := h.cache.Get(conn.ID, conn.Type, conn.Credentials)
 	if err != nil {
-		JSONError(w, http.StatusBadRequest, "failed to get adapter: "+err.Error())
-		return
-	}
-	defer adapter.Close()
-
-	if err := adapter.Connect(conn.Credentials); err != nil {
 		JSONError(w, http.StatusBadRequest, "failed to connect: "+err.Error())
 		return
 	}

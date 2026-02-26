@@ -214,8 +214,9 @@ func (a *PostgresAdapter) GetTableData(tableName string, limit, offset int, filt
 }
 
 func (a *PostgresAdapter) ExecuteQuery(query string) (*models.QueryResult, error) {
-	return a.executeQueryWithArgs(query, nil)
+	return a.executeQueryWithArgs(applyRowLimit(query), nil)
 }
+
 
 func (a *PostgresAdapter) executeQueryWithArgs(query string, args []any) (*models.QueryResult, error) {
 	upperQuery := strings.ToUpper(strings.TrimSpace(query))
