@@ -13,9 +13,10 @@ import (
 	"github.com/3-lines-studio/bifrost"
 	webview "github.com/webview/webview_go"
 
-	"github.com/3-lines-studio/datafrost/internal/adapters"
-	"github.com/3-lines-studio/datafrost/internal/db"
-	"github.com/3-lines-studio/datafrost/internal/handlers"
+	"github.com/3-lines-studio/datafrost/internal/adapter/database"
+	adapterHttp "github.com/3-lines-studio/datafrost/internal/adapter/http"
+	"github.com/3-lines-studio/datafrost/internal/adapter/repository"
+	"github.com/3-lines-studio/datafrost/internal/usecase"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -37,12 +38,12 @@ func main() {
 	}
 
 	if len(flag.Args()) > 0 && flag.Args()[0] == "reset" {
-		path := db.DBPath()
+		path := repository.DBPath()
 		fmt.Printf("Resetting database at %s...\n", path)
 		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 			log.Fatalf("Failed to remove database: %v", err)
 		}
-		configDB, err := db.NewConfigDB()
+		configDB, err := repository.NewConfigDB()
 		if err != nil {
 			log.Fatalf("Failed to recreate database: %v", err)
 		}
@@ -51,16 +52,37 @@ func main() {
 		os.Exit(0)
 	}
 
-	configDB, err := db.NewConfigDB()
+	configDB, err := repository.NewConfigDB()
 	if err != nil {
 		log.Fatalf("Failed to initialize config database: %v", err)
 	}
 	defer configDB.Close()
 
-	connectionStore := db.NewConnectionStore(configDB.DB())
+	sqlDB := configDB.DB()
 
-	adapterCache := adapters.NewAdapterCache()
+	connectionRepo := repository.NewConnectionRepository(sqlDB)
+	savedQueryRepo := repository.NewSavedQueryRepository(sqlDB)
+	appStateRepo := repository.NewAppStateRepository(sqlDB)
+
+	factory := database.NewFactory()
+	adapterCache := database.NewAdapterCache()
 	defer adapterCache.Close()
+
+	connectionUsecase := usecase.NewConnectionUsecase(connectionRepo, factory, adapterCache)
+	tableUsecase := usecase.NewTableUsecase(connectionRepo, adapterCache)
+	queryUsecase := usecase.NewQueryUsecase(connectionRepo, adapterCache)
+	savedQueryUsecase := usecase.NewSavedQueryUsecase(savedQueryRepo)
+	appStateUsecase := usecase.NewAppStateUsecase(appStateRepo)
+	adapterUsecase := usecase.NewAdapterUsecase(factory)
+
+	connectionsHandler := adapterHttp.NewConnectionsHandler(connectionUsecase)
+	tablesHandler := adapterHttp.NewTablesHandler(tableUsecase)
+	queryHandler := adapterHttp.NewQueryHandler(queryUsecase)
+	savedQueriesHandler := adapterHttp.NewSavedQueriesHandler(savedQueryUsecase)
+	tabsHandler := adapterHttp.NewTabsHandler(appStateUsecase)
+	themeHandler := adapterHttp.NewThemeHandler(appStateUsecase)
+	layoutHandler := adapterHttp.NewLayoutHandler(appStateUsecase)
+	adapterHandler := adapterHttp.NewAdapterHandler(adapterUsecase)
 
 	apiRouter := chi.NewRouter()
 	apiRouter.Use(middleware.Logger)
@@ -70,15 +92,6 @@ func main() {
 		AllowedMethods: []string{"GET", "POST", "DELETE", "OPTIONS"},
 		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type"},
 	}))
-
-	connectionsHandler := handlers.NewConnectionsHandler(connectionStore, adapterCache)
-	tablesHandler := handlers.NewTablesHandler(connectionStore, adapterCache)
-	queryHandler := handlers.NewQueryHandler(connectionStore, adapterCache)
-	themeHandler := handlers.NewThemeHandler(configDB.DB())
-	layoutHandler := handlers.NewLayoutHandler(configDB.DB())
-	tabsHandler := handlers.NewTabsHandler(configDB.DB())
-	savedQueriesStore := db.NewSavedQueriesStore(configDB.DB())
-	savedQueriesHandler := handlers.NewSavedQueriesHandler(savedQueriesStore)
 
 	apiRouter.Route("/api", func(r chi.Router) {
 		r.Route("/connections", func(r chi.Router) {
@@ -106,7 +119,7 @@ func main() {
 			})
 			r.Post("/test", connectionsHandler.Test)
 		})
-		r.Get("/adapters", connectionsHandler.ListAdapters)
+		r.Get("/adapters", adapterHandler.List)
 		r.Get("/theme", themeHandler.Get)
 		r.Post("/theme", themeHandler.Update)
 		r.Get("/layouts/{key}", layoutHandler.Get)

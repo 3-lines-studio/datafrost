@@ -1,29 +1,25 @@
-package adapters
+package database
 
 import (
 	"sync"
 
-	"github.com/3-lines-studio/datafrost/internal/models"
+	"github.com/3-lines-studio/datafrost/internal/core/entity"
 )
 
-// AdapterCache maintains a live connection per saved connection ID,
-// avoiding the cost of reconnecting on every request.
 type AdapterCache struct {
 	mu      sync.Mutex
-	entries map[int64]models.DatabaseAdapter
+	entries map[int64]entity.DatabaseAdapter
 	factory *Factory
 }
 
 func NewAdapterCache() *AdapterCache {
 	return &AdapterCache{
-		entries: make(map[int64]models.DatabaseAdapter),
+		entries: make(map[int64]entity.DatabaseAdapter),
 		factory: NewFactory(),
 	}
 }
 
-// Get returns a cached adapter for the given connection ID, creating and
-// connecting one if it doesn't exist yet.
-func (c *AdapterCache) Get(id int64, connType string, credentials map[string]any) (models.DatabaseAdapter, error) {
+func (c *AdapterCache) Get(id int64, connType string, credentials map[string]any) (entity.DatabaseAdapter, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -44,8 +40,6 @@ func (c *AdapterCache) Get(id int64, connType string, credentials map[string]any
 	return adapter, nil
 }
 
-// Invalidate closes and removes the cached adapter for the given ID.
-// Call this when a connection is deleted or its credentials are updated.
 func (c *AdapterCache) Invalidate(id int64) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -56,7 +50,6 @@ func (c *AdapterCache) Invalidate(id int64) {
 	}
 }
 
-// Close closes all cached adapters.
 func (c *AdapterCache) Close() {
 	c.mu.Lock()
 	defer c.mu.Unlock()

@@ -1,4 +1,4 @@
-package adapters
+package database
 
 import (
 	"context"
@@ -7,27 +7,27 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/3-lines-studio/datafrost/internal/models"
+	"github.com/3-lines-studio/datafrost/internal/core/entity"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-type PostgresAdapter struct {
+type postgresAdapter struct {
 	conn *sql.DB
 }
 
-func NewPostgresAdapterRegistration() models.AdapterRegistration {
-	return models.AdapterRegistration{
-		Info: models.AdapterInfo{
+func newPostgresAdapterRegistration() entity.AdapterRegistration {
+	return entity.AdapterRegistration{
+		Info: entity.AdapterInfo{
 			Type:        "postgres",
 			Name:        "PostgreSQL",
 			Description: "PostgreSQL database",
-			UIConfig: models.UIConfig{
-				Modes: []models.UIMode{
+			UIConfig: entity.UIConfig{
+				Modes: []entity.UIMode{
 					{
 						Key:   "url",
 						Label: "Connection URL",
-						Fields: []models.FieldConfig{
+						Fields: []entity.FieldConfig{
 							{
 								Key:         "url",
 								Label:       "Connection URL",
@@ -40,7 +40,7 @@ func NewPostgresAdapterRegistration() models.AdapterRegistration {
 					{
 						Key:   "fields",
 						Label: "Individual Fields",
-						Fields: []models.FieldConfig{
+						Fields: []entity.FieldConfig{
 							{
 								Key:         "host",
 								Label:       "Host",
@@ -89,13 +89,13 @@ func NewPostgresAdapterRegistration() models.AdapterRegistration {
 				SupportsFile: false,
 			},
 		},
-		Factory: func() models.DatabaseAdapter {
-			return &PostgresAdapter{}
+		Factory: func() entity.DatabaseAdapter {
+			return &postgresAdapter{}
 		},
 	}
 }
 
-func (a *PostgresAdapter) Connect(credentials map[string]any) error {
+func (a *postgresAdapter) Connect(credentials map[string]any) error {
 	mode, _ := credentials["mode"].(string)
 
 	var connStr string
@@ -150,21 +150,21 @@ func (a *PostgresAdapter) Connect(credentials map[string]any) error {
 	return nil
 }
 
-func (a *PostgresAdapter) Close() error {
+func (a *postgresAdapter) Close() error {
 	if a.conn != nil {
 		return a.conn.Close()
 	}
 	return nil
 }
 
-func (a *PostgresAdapter) Ping() error {
+func (a *postgresAdapter) Ping() error {
 	if a.conn == nil {
 		return fmt.Errorf("not connected")
 	}
 	return a.conn.Ping()
 }
 
-func (a *PostgresAdapter) ListTables() ([]models.TableInfo, error) {
+func (a *postgresAdapter) ListTables() ([]entity.TableInfo, error) {
 	rows, err := a.conn.Query(`
 		SELECT table_name, 'table' as type
 		FROM information_schema.tables
@@ -176,9 +176,9 @@ func (a *PostgresAdapter) ListTables() ([]models.TableInfo, error) {
 	}
 	defer rows.Close()
 
-	var tables []models.TableInfo
+	var tables []entity.TableInfo
 	for rows.Next() {
-		var t models.TableInfo
+		var t entity.TableInfo
 		if err := rows.Scan(&t.Name, &t.Type); err != nil {
 			return nil, fmt.Errorf("failed to scan table: %w", err)
 		}
@@ -188,7 +188,7 @@ func (a *PostgresAdapter) ListTables() ([]models.TableInfo, error) {
 	return tables, rows.Err()
 }
 
-func (a *PostgresAdapter) GetTableData(tableName string, limit, offset int, filters []models.Filter) (*models.QueryResult, error) {
+func (a *postgresAdapter) GetTableData(tableName string, limit, offset int, filters []entity.Filter) (*entity.QueryResult, error) {
 	whereClause, args := buildPostgresWhereClause(filters)
 
 	count, err := a.getFilteredTableCount(tableName, whereClause, args)
@@ -213,11 +213,11 @@ func (a *PostgresAdapter) GetTableData(tableName string, limit, offset int, filt
 	return result, nil
 }
 
-func (a *PostgresAdapter) ExecuteQuery(query string) (*models.QueryResult, error) {
+func (a *postgresAdapter) ExecuteQuery(query string) (*entity.QueryResult, error) {
 	return a.executeQueryWithArgs(query, nil)
 }
 
-func (a *PostgresAdapter) executeQueryWithArgs(query string, args []any) (*models.QueryResult, error) {
+func (a *postgresAdapter) executeQueryWithArgs(query string, args []any) (*entity.QueryResult, error) {
 	upperQuery := strings.ToUpper(strings.TrimSpace(query))
 	isSelect := strings.HasPrefix(upperQuery, "SELECT") || strings.HasPrefix(upperQuery, "WITH")
 
@@ -256,7 +256,7 @@ func (a *PostgresAdapter) executeQueryWithArgs(query string, args []any) (*model
 		return nil, fmt.Errorf("row iteration error: %w", err)
 	}
 
-	return &models.QueryResult{
+	return &entity.QueryResult{
 		Columns: columns,
 		Rows:    resultRows,
 		Count:   len(resultRows),
@@ -266,7 +266,7 @@ func (a *PostgresAdapter) executeQueryWithArgs(query string, args []any) (*model
 	}, nil
 }
 
-func (a *PostgresAdapter) getFilteredTableCount(tableName, whereClause string, args []any) (int, error) {
+func (a *postgresAdapter) getFilteredTableCount(tableName, whereClause string, args []any) (int, error) {
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM \"%s\"", tableName)
 	if whereClause != "" {
 		countQuery += " WHERE " + whereClause
@@ -279,8 +279,8 @@ func (a *PostgresAdapter) getFilteredTableCount(tableName, whereClause string, a
 	return count, nil
 }
 
-func (a *PostgresAdapter) GetTableSchema(tableName string) (*models.TableSchema, error) {
-	schema := &models.TableSchema{
+func (a *postgresAdapter) GetTableSchema(tableName string) (*entity.TableSchema, error) {
+	schema := &entity.TableSchema{
 		TableName: tableName,
 	}
 
@@ -300,9 +300,9 @@ func (a *PostgresAdapter) GetTableSchema(tableName string) (*models.TableSchema,
 	}
 	defer columnRows.Close()
 
-	var columns []models.ColumnInfo
+	var columns []entity.ColumnInfo
 	for columnRows.Next() {
-		var col models.ColumnInfo
+		var col entity.ColumnInfo
 		if err := columnRows.Scan(&col.Name, &col.Type, &col.Nullable, &col.DefaultValue, &col.IsPrimaryKey); err != nil {
 			return nil, fmt.Errorf("failed to scan column: %w", err)
 		}
@@ -354,9 +354,9 @@ func (a *PostgresAdapter) GetTableSchema(tableName string) (*models.TableSchema,
 	}
 	defer indexRows.Close()
 
-	var indexes []models.IndexInfo
+	var indexes []entity.IndexInfo
 	for indexRows.Next() {
-		var idx models.IndexInfo
+		var idx entity.IndexInfo
 		if err := indexRows.Scan(&idx.Name, &idx.Unique); err != nil {
 			return nil, fmt.Errorf("failed to scan index: %w", err)
 		}
@@ -403,9 +403,9 @@ func (a *PostgresAdapter) GetTableSchema(tableName string) (*models.TableSchema,
 	}
 	defer constraintRows.Close()
 
-	var constraints []models.ConstraintInfo
+	var constraints []entity.ConstraintInfo
 	for constraintRows.Next() {
-		var c models.ConstraintInfo
+		var c entity.ConstraintInfo
 		var typeStr string
 		if err := constraintRows.Scan(&c.Name, &typeStr, &c.Definition); err != nil {
 			continue
@@ -426,7 +426,7 @@ func (a *PostgresAdapter) GetTableSchema(tableName string) (*models.TableSchema,
 	return schema, nil
 }
 
-func buildPostgresWhereClause(filters []models.Filter) (string, []any) {
+func buildPostgresWhereClause(filters []entity.Filter) (string, []any) {
 	if len(filters) == 0 {
 		return "", nil
 	}

@@ -1,27 +1,22 @@
-package handlers
+package http
 
 import (
 	"encoding/json"
 	"net/http"
 	"strconv"
 
-	"github.com/3-lines-studio/datafrost/internal/adapters"
-	"github.com/3-lines-studio/datafrost/internal/db"
-	"github.com/3-lines-studio/datafrost/internal/models"
+	"github.com/3-lines-studio/datafrost/internal/core/entity"
+	"github.com/3-lines-studio/datafrost/internal/usecase"
 
 	"github.com/go-chi/chi/v5"
 )
 
 type TablesHandler struct {
-	store *db.ConnectionStore
-	cache *adapters.AdapterCache
+	uc *usecase.TableUsecase
 }
 
-func NewTablesHandler(store *db.ConnectionStore, cache *adapters.AdapterCache) *TablesHandler {
-	return &TablesHandler{
-		store: store,
-		cache: cache,
-	}
+func NewTablesHandler(uc *usecase.TableUsecase) *TablesHandler {
+	return &TablesHandler{uc: uc}
 }
 
 func (h *TablesHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -32,25 +27,13 @@ func (h *TablesHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := h.store.GetByID(id)
+	tables, err := h.uc.ListTables(id)
 	if err != nil {
-		JSONError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if conn == nil {
-		JSONError(w, http.StatusNotFound, "connection not found")
-		return
-	}
-
-	adapter, err := h.cache.Get(conn.ID, conn.Type, conn.Credentials)
-	if err != nil {
+		if err == usecase.ErrConnectionNotFound {
+			JSONError(w, http.StatusNotFound, "connection not found")
+			return
+		}
 		JSONError(w, http.StatusBadRequest, "failed to connect: "+err.Error())
-		return
-	}
-
-	tables, err := adapter.ListTables()
-	if err != nil {
-		JSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -68,22 +51,6 @@ func (h *TablesHandler) GetData(w http.ResponseWriter, r *http.Request) {
 	tableName := chi.URLParam(r, "name")
 	if tableName == "" {
 		JSONError(w, http.StatusBadRequest, "table name is required")
-		return
-	}
-
-	conn, err := h.store.GetByID(id)
-	if err != nil {
-		JSONError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if conn == nil {
-		JSONError(w, http.StatusNotFound, "connection not found")
-		return
-	}
-
-	adapter, err := h.cache.Get(conn.ID, conn.Type, conn.Credentials)
-	if err != nil {
-		JSONError(w, http.StatusBadRequest, "failed to connect: "+err.Error())
 		return
 	}
 
@@ -106,7 +73,7 @@ func (h *TablesHandler) GetData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var filters []models.Filter
+	var filters []entity.Filter
 	filtersStr := r.URL.Query().Get("filters")
 	if filtersStr != "" {
 		if err := json.Unmarshal([]byte(filtersStr), &filters); err != nil {
@@ -117,8 +84,12 @@ func (h *TablesHandler) GetData(w http.ResponseWriter, r *http.Request) {
 
 	offset := (page - 1) * limit
 
-	result, err := adapter.GetTableData(tableName, limit, offset, filters)
+	result, err := h.uc.GetTableData(id, tableName, limit, offset, filters)
 	if err != nil {
+		if err == usecase.ErrConnectionNotFound {
+			JSONError(w, http.StatusNotFound, "connection not found")
+			return
+		}
 		JSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -140,24 +111,12 @@ func (h *TablesHandler) GetSchema(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conn, err := h.store.GetByID(id)
+	schema, err := h.uc.GetTableSchema(id, tableName)
 	if err != nil {
-		JSONError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if conn == nil {
-		JSONError(w, http.StatusNotFound, "connection not found")
-		return
-	}
-
-	adapter, err := h.cache.Get(conn.ID, conn.Type, conn.Credentials)
-	if err != nil {
-		JSONError(w, http.StatusBadRequest, "failed to connect: "+err.Error())
-		return
-	}
-
-	schema, err := adapter.GetTableSchema(tableName)
-	if err != nil {
+		if err == usecase.ErrConnectionNotFound {
+			JSONError(w, http.StatusNotFound, "connection not found")
+			return
+		}
 		JSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -165,20 +124,12 @@ func (h *TablesHandler) GetSchema(w http.ResponseWriter, r *http.Request) {
 	JSONResponse(w, http.StatusOK, schema)
 }
 
-type QueryRequest struct {
-	Query string `json:"query"`
-}
-
 type QueryHandler struct {
-	store *db.ConnectionStore
-	cache *adapters.AdapterCache
+	uc *usecase.QueryUsecase
 }
 
-func NewQueryHandler(store *db.ConnectionStore, cache *adapters.AdapterCache) *QueryHandler {
-	return &QueryHandler{
-		store: store,
-		cache: cache,
-	}
+func NewQueryHandler(uc *usecase.QueryUsecase) *QueryHandler {
+	return &QueryHandler{uc: uc}
 }
 
 func (h *QueryHandler) Execute(w http.ResponseWriter, r *http.Request) {
@@ -189,35 +140,22 @@ func (h *QueryHandler) Execute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req QueryRequest
+	var req entity.QueryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		JSONError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	if req.Query == "" {
-		JSONError(w, http.StatusBadRequest, "query is required")
-		return
-	}
-
-	conn, err := h.store.GetByID(id)
+	result, err := h.uc.Execute(id, req.Query)
 	if err != nil {
-		JSONError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if conn == nil {
-		JSONError(w, http.StatusNotFound, "connection not found")
-		return
-	}
-
-	adapter, err := h.cache.Get(conn.ID, conn.Type, conn.Credentials)
-	if err != nil {
-		JSONError(w, http.StatusBadRequest, "failed to connect: "+err.Error())
-		return
-	}
-
-	result, err := adapter.ExecuteQuery(req.Query)
-	if err != nil {
+		if err == usecase.ErrConnectionNotFound {
+			JSONError(w, http.StatusNotFound, "connection not found")
+			return
+		}
+		if err == usecase.ErrQueryRequired {
+			JSONError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		JSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}

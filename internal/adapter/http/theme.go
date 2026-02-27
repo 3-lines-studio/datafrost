@@ -1,30 +1,28 @@
-package handlers
+package http
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
+
+	"github.com/3-lines-studio/datafrost/internal/usecase"
 )
 
 type ThemeHandler struct {
-	db *sql.DB
+	uc *usecase.AppStateUsecase
 }
 
-func NewThemeHandler(db *sql.DB) *ThemeHandler {
-	return &ThemeHandler{db: db}
+func NewThemeHandler(uc *usecase.AppStateUsecase) *ThemeHandler {
+	return &ThemeHandler{uc: uc}
 }
 
 func (h *ThemeHandler) Get(w http.ResponseWriter, r *http.Request) {
-	var value string
-	err := h.db.QueryRow("SELECT value FROM app_state WHERE key = 'theme'").Scan(&value)
-	if err == sql.ErrNoRows {
-		value = "light"
-	} else if err != nil {
+	theme, err := h.uc.GetTheme()
+	if err != nil {
 		JSONError(w, http.StatusInternalServerError, "Failed to get theme")
 		return
 	}
 
-	JSONResponse(w, http.StatusOK, map[string]string{"theme": value})
+	JSONResponse(w, http.StatusOK, map[string]string{"theme": theme})
 }
 
 func (h *ThemeHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -42,11 +40,7 @@ func (h *ThemeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.db.Exec(
-		"INSERT INTO app_state (key, value) VALUES ('theme', ?) ON CONFLICT(key) DO UPDATE SET value = ?",
-		req.Theme, req.Theme,
-	)
-	if err != nil {
+	if err := h.uc.SetTheme(req.Theme); err != nil {
 		JSONError(w, http.StatusInternalServerError, "Failed to save theme")
 		return
 	}

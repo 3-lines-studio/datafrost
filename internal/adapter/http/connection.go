@@ -1,39 +1,30 @@
-package handlers
+package http
 
 import (
 	"encoding/json"
 	"net/http"
 	"strconv"
 
-	"github.com/3-lines-studio/datafrost/internal/adapters"
-	"github.com/3-lines-studio/datafrost/internal/db"
-	"github.com/3-lines-studio/datafrost/internal/models"
+	"github.com/3-lines-studio/datafrost/internal/core/entity"
+	"github.com/3-lines-studio/datafrost/internal/usecase"
 
 	"github.com/go-chi/chi/v5"
 )
 
 type ConnectionsHandler struct {
-	store   *db.ConnectionStore
-	factory *adapters.Factory
-	cache   *adapters.AdapterCache
+	uc *usecase.ConnectionUsecase
 }
 
-func NewConnectionsHandler(store *db.ConnectionStore, cache *adapters.AdapterCache) *ConnectionsHandler {
-	return &ConnectionsHandler{
-		store:   store,
-		factory: adapters.NewFactory(),
-		cache:   cache,
-	}
+func NewConnectionsHandler(uc *usecase.ConnectionUsecase) *ConnectionsHandler {
+	return &ConnectionsHandler{uc: uc}
 }
 
 func (h *ConnectionsHandler) List(w http.ResponseWriter, r *http.Request) {
-	connections, err := h.store.List()
+	connections, lastID, err := h.uc.List()
 	if err != nil {
 		JSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	lastID, _ := h.store.GetLastConnected()
 
 	response := map[string]any{
 		"connections": connections,
@@ -43,30 +34,19 @@ func (h *ConnectionsHandler) List(w http.ResponseWriter, r *http.Request) {
 	JSONResponse(w, http.StatusOK, response)
 }
 
-func (h *ConnectionsHandler) ListAdapters(w http.ResponseWriter, r *http.Request) {
-	adapters := h.factory.ListAdapters()
-	JSONResponse(w, http.StatusOK, adapters)
-}
-
 func (h *ConnectionsHandler) Create(w http.ResponseWriter, r *http.Request) {
-	var req models.CreateConnectionRequest
+	var req entity.CreateConnectionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		JSONError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	if req.Name == "" {
-		JSONError(w, http.StatusBadRequest, "name is required")
-		return
-	}
-
-	if req.Type == "" {
-		JSONError(w, http.StatusBadRequest, "type is required")
-		return
-	}
-
-	conn, err := h.store.Create(req)
+	conn, err := h.uc.Create(req)
 	if err != nil {
+		if err == usecase.ErrNameRequired || err == usecase.ErrTypeRequired {
+			JSONError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		JSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -82,12 +62,11 @@ func (h *ConnectionsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.store.Delete(id); err != nil {
+	if err := h.uc.Delete(id); err != nil {
 		JSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	h.cache.Invalidate(id)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -99,7 +78,7 @@ func (h *ConnectionsHandler) SetLastConnected(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if err := h.store.SetLastConnected(id); err != nil {
+	if err := h.uc.SetLastConnected(id); err != nil {
 		JSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -115,26 +94,18 @@ func (h *ConnectionsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req models.UpdateConnectionRequest
+	var req entity.UpdateConnectionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		JSONError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	if req.Name == "" {
-		JSONError(w, http.StatusBadRequest, "name is required")
-		return
-	}
-
-	if req.Type == "" {
-		JSONError(w, http.StatusBadRequest, "type is required")
-		return
-	}
-
-	h.cache.Invalidate(id)
-
-	conn, err := h.store.Update(id, req)
+	conn, err := h.uc.Update(id, req)
 	if err != nil {
+		if err == usecase.ErrNameRequired || err == usecase.ErrTypeRequired {
+			JSONError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		JSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -143,18 +114,17 @@ func (h *ConnectionsHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ConnectionsHandler) Test(w http.ResponseWriter, r *http.Request) {
-	var req models.TestConnectionRequest
+	var req entity.TestConnectionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		JSONError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	if req.Type == "" {
-		JSONError(w, http.StatusBadRequest, "type is required")
-		return
-	}
-
-	if err := h.factory.TestConnection(req.Type, req.Credentials); err != nil {
+	if err := h.uc.Test(req); err != nil {
+		if err == usecase.ErrTypeRequired {
+			JSONError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		JSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -170,18 +140,11 @@ func (h *ConnectionsHandler) TestExisting(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	conn, err := h.store.GetByID(id)
-	if err != nil {
-		JSONError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	if conn == nil {
-		JSONError(w, http.StatusNotFound, "connection not found")
-		return
-	}
-
-	if err := h.factory.TestConnection(conn.Type, conn.Credentials); err != nil {
+	if err := h.uc.TestExisting(id); err != nil {
+		if err == usecase.ErrConnectionNotFound {
+			JSONError(w, http.StatusNotFound, "connection not found")
+			return
+		}
 		JSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}

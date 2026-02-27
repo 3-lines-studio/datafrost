@@ -1,21 +1,21 @@
-package handlers
+package http
 
 import (
 	"encoding/json"
 	"net/http"
 	"strconv"
 
-	"github.com/3-lines-studio/datafrost/internal/db"
+	"github.com/3-lines-studio/datafrost/internal/usecase"
 
 	"github.com/go-chi/chi/v5"
 )
 
 type SavedQueriesHandler struct {
-	store *db.SavedQueriesStore
+	uc *usecase.SavedQueryUsecase
 }
 
-func NewSavedQueriesHandler(store *db.SavedQueriesStore) *SavedQueriesHandler {
-	return &SavedQueriesHandler{store: store}
+func NewSavedQueriesHandler(uc *usecase.SavedQueryUsecase) *SavedQueriesHandler {
+	return &SavedQueriesHandler{uc: uc}
 }
 
 func (h *SavedQueriesHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -26,7 +26,7 @@ func (h *SavedQueriesHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	queries, err := h.store.ListByConnection(connectionID)
+	queries, err := h.uc.ListByConnection(connectionID)
 	if err != nil {
 		JSONError(w, http.StatusInternalServerError, "Failed to fetch saved queries")
 		return
@@ -53,13 +53,12 @@ func (h *SavedQueriesHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Name == "" || req.Query == "" {
-		JSONError(w, http.StatusBadRequest, "Name and query are required")
-		return
-	}
-
-	query, err := h.store.Create(connectionID, req.Name, req.Query)
+	query, err := h.uc.Create(connectionID, req.Name, req.Query)
 	if err != nil {
+		if err == usecase.ErrNameRequired || err == usecase.ErrQueryRequired {
+			JSONError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		JSONError(w, http.StatusInternalServerError, "Failed to create saved query")
 		return
 	}
@@ -85,19 +84,17 @@ func (h *SavedQueriesHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Name == "" || req.Query == "" {
-		JSONError(w, http.StatusBadRequest, "Name and query are required")
-		return
-	}
-
-	query, err := h.store.Update(queryID, req.Name, req.Query)
+	query, err := h.uc.Update(queryID, req.Name, req.Query)
 	if err != nil {
+		if err == usecase.ErrQueryNotFound {
+			JSONError(w, http.StatusNotFound, "Query not found")
+			return
+		}
+		if err == usecase.ErrNameRequired || err == usecase.ErrQueryRequired {
+			JSONError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		JSONError(w, http.StatusInternalServerError, "Failed to update saved query")
-		return
-	}
-
-	if query == nil {
-		JSONError(w, http.StatusNotFound, "Query not found")
 		return
 	}
 
@@ -112,7 +109,7 @@ func (h *SavedQueriesHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.store.Delete(queryID); err != nil {
+	if err := h.uc.Delete(queryID); err != nil {
 		JSONError(w, http.StatusInternalServerError, "Failed to delete saved query")
 		return
 	}

@@ -1,28 +1,28 @@
-package db
+package repository
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 
-	"github.com/3-lines-studio/datafrost/internal/adapters"
-	"github.com/3-lines-studio/datafrost/internal/models"
+	"github.com/3-lines-studio/datafrost/internal/core/entity"
 )
 
-type ConnectionStore struct {
+type ConnectionRepository struct {
 	db *sql.DB
 }
 
-func NewConnectionStore(db *sql.DB) *ConnectionStore {
-	return &ConnectionStore{db: db}
+func NewConnectionRepository(db *sql.DB) *ConnectionRepository {
+	return &ConnectionRepository{db: db}
 }
 
-func (s *ConnectionStore) Create(req models.CreateConnectionRequest) (*models.Connection, error) {
-	credentialsJSON, err := adapters.SerializeCredentials(req.Credentials)
+func (r *ConnectionRepository) Create(req entity.CreateConnectionRequest) (*entity.Connection, error) {
+	credentialsJSON, err := serializeCredentials(req.Credentials)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := s.db.Exec(
+	result, err := r.db.Exec(
 		"INSERT INTO connections (name, type, credentials) VALUES (?, ?, ?)",
 		req.Name, req.Type, credentialsJSON,
 	)
@@ -35,13 +35,13 @@ func (s *ConnectionStore) Create(req models.CreateConnectionRequest) (*models.Co
 		return nil, fmt.Errorf("failed to get last insert id: %w", err)
 	}
 
-	return s.GetByID(id)
+	return r.GetByID(id)
 }
 
-func (s *ConnectionStore) GetByID(id int64) (*models.Connection, error) {
-	var conn models.Connection
+func (r *ConnectionRepository) GetByID(id int64) (*entity.Connection, error) {
+	var conn entity.Connection
 	var credentialsJSON string
-	err := s.db.QueryRow(
+	err := r.db.QueryRow(
 		"SELECT id, name, type, credentials, created_at FROM connections WHERE id = ?",
 		id,
 	).Scan(&conn.ID, &conn.Name, &conn.Type, &credentialsJSON, &conn.CreatedAt)
@@ -53,7 +53,7 @@ func (s *ConnectionStore) GetByID(id int64) (*models.Connection, error) {
 		return nil, fmt.Errorf("failed to get connection: %w", err)
 	}
 
-	conn.Credentials, err = adapters.DeserializeCredentials(credentialsJSON)
+	conn.Credentials, err = deserializeCredentials(credentialsJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -61,8 +61,8 @@ func (s *ConnectionStore) GetByID(id int64) (*models.Connection, error) {
 	return &conn, nil
 }
 
-func (s *ConnectionStore) List() ([]models.Connection, error) {
-	rows, err := s.db.Query(
+func (r *ConnectionRepository) List() ([]entity.Connection, error) {
+	rows, err := r.db.Query(
 		"SELECT id, name, type, credentials, created_at FROM connections ORDER BY created_at DESC",
 	)
 	if err != nil {
@@ -70,14 +70,14 @@ func (s *ConnectionStore) List() ([]models.Connection, error) {
 	}
 	defer rows.Close()
 
-	var connections []models.Connection
+	var connections []entity.Connection
 	for rows.Next() {
-		var conn models.Connection
+		var conn entity.Connection
 		var credentialsJSON string
 		if err := rows.Scan(&conn.ID, &conn.Name, &conn.Type, &credentialsJSON, &conn.CreatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan connection: %w", err)
 		}
-		conn.Credentials, err = adapters.DeserializeCredentials(credentialsJSON)
+		conn.Credentials, err = deserializeCredentials(credentialsJSON)
 		if err != nil {
 			return nil, err
 		}
@@ -87,21 +87,21 @@ func (s *ConnectionStore) List() ([]models.Connection, error) {
 	return connections, rows.Err()
 }
 
-func (s *ConnectionStore) Delete(id int64) error {
-	_, err := s.db.Exec("DELETE FROM connections WHERE id = ?", id)
+func (r *ConnectionRepository) Delete(id int64) error {
+	_, err := r.db.Exec("DELETE FROM connections WHERE id = ?", id)
 	if err != nil {
 		return fmt.Errorf("failed to delete connection: %w", err)
 	}
 	return nil
 }
 
-func (s *ConnectionStore) Update(id int64, req models.UpdateConnectionRequest) (*models.Connection, error) {
-	credentialsJSON, err := adapters.SerializeCredentials(req.Credentials)
+func (r *ConnectionRepository) Update(id int64, req entity.UpdateConnectionRequest) (*entity.Connection, error) {
+	credentialsJSON, err := serializeCredentials(req.Credentials)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = s.db.Exec(
+	_, err = r.db.Exec(
 		"UPDATE connections SET name = ?, type = ?, credentials = ? WHERE id = ?",
 		req.Name, req.Type, credentialsJSON, id,
 	)
@@ -109,20 +109,20 @@ func (s *ConnectionStore) Update(id int64, req models.UpdateConnectionRequest) (
 		return nil, fmt.Errorf("failed to update connection: %w", err)
 	}
 
-	return s.GetByID(id)
+	return r.GetByID(id)
 }
 
-func (s *ConnectionStore) SetLastConnected(id int64) error {
-	_, err := s.db.Exec(
+func (r *ConnectionRepository) SetLastConnected(id int64) error {
+	_, err := r.db.Exec(
 		"INSERT INTO app_state (key, value) VALUES ('last_connected_id', ?) ON CONFLICT(key) DO UPDATE SET value = ?",
 		fmt.Sprintf("%d", id), fmt.Sprintf("%d", id),
 	)
 	return err
 }
 
-func (s *ConnectionStore) GetLastConnected() (int64, error) {
+func (r *ConnectionRepository) GetLastConnected() (int64, error) {
 	var value string
-	err := s.db.QueryRow(
+	err := r.db.QueryRow(
 		"SELECT value FROM app_state WHERE key = 'last_connected_id'",
 	).Scan(&value)
 
@@ -136,4 +136,20 @@ func (s *ConnectionStore) GetLastConnected() (int64, error) {
 	var id int64
 	_, err = fmt.Sscanf(value, "%d", &id)
 	return id, err
+}
+
+func serializeCredentials(credentials map[string]any) (string, error) {
+	data, err := json.Marshal(credentials)
+	if err != nil {
+		return "", fmt.Errorf("failed to serialize credentials: %w", err)
+	}
+	return string(data), nil
+}
+
+func deserializeCredentials(data string) (map[string]any, error) {
+	var credentials map[string]any
+	if err := json.Unmarshal([]byte(data), &credentials); err != nil {
+		return nil, fmt.Errorf("failed to deserialize credentials: %w", err)
+	}
+	return credentials, nil
 }

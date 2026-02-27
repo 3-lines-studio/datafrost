@@ -1,29 +1,22 @@
-package db
+package repository
 
 import (
 	"database/sql"
 	"time"
+
+	"github.com/3-lines-studio/datafrost/internal/core/entity"
 )
 
-type SavedQuery struct {
-	ID           int64     `json:"id"`
-	ConnectionID int64     `json:"connectionId"`
-	Name         string    `json:"name"`
-	Query        string    `json:"query"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
-}
-
-type SavedQueriesStore struct {
+type SavedQueryRepository struct {
 	db *sql.DB
 }
 
-func NewSavedQueriesStore(db *sql.DB) *SavedQueriesStore {
-	return &SavedQueriesStore{db: db}
+func NewSavedQueryRepository(db *sql.DB) *SavedQueryRepository {
+	return &SavedQueryRepository{db: db}
 }
 
-func (s *SavedQueriesStore) ListByConnection(connectionID int64) ([]SavedQuery, error) {
-	rows, err := s.db.Query(
+func (r *SavedQueryRepository) ListByConnection(connectionID int64) ([]entity.SavedQuery, error) {
+	rows, err := r.db.Query(
 		`SELECT id, connection_id, name, query, created_at, updated_at 
 		 FROM saved_queries 
 		 WHERE connection_id = ? 
@@ -35,9 +28,9 @@ func (s *SavedQueriesStore) ListByConnection(connectionID int64) ([]SavedQuery, 
 	}
 	defer rows.Close()
 
-	var queries []SavedQuery
+	var queries []entity.SavedQuery
 	for rows.Next() {
-		var q SavedQuery
+		var q entity.SavedQuery
 		err := rows.Scan(
 			&q.ID,
 			&q.ConnectionID,
@@ -55,9 +48,9 @@ func (s *SavedQueriesStore) ListByConnection(connectionID int64) ([]SavedQuery, 
 	return queries, rows.Err()
 }
 
-func (s *SavedQueriesStore) GetByID(id int64) (*SavedQuery, error) {
-	var q SavedQuery
-	err := s.db.QueryRow(
+func (r *SavedQueryRepository) GetByID(id int64) (*entity.SavedQuery, error) {
+	var q entity.SavedQuery
+	err := r.db.QueryRow(
 		`SELECT id, connection_id, name, query, created_at, updated_at 
 		 FROM saved_queries 
 		 WHERE id = ?`,
@@ -79,8 +72,8 @@ func (s *SavedQueriesStore) GetByID(id int64) (*SavedQuery, error) {
 	return &q, nil
 }
 
-func (s *SavedQueriesStore) Create(connectionID int64, name, query string) (*SavedQuery, error) {
-	result, err := s.db.Exec(
+func (r *SavedQueryRepository) Create(connectionID int64, name, query string) (*entity.SavedQuery, error) {
+	result, err := r.db.Exec(
 		`INSERT INTO saved_queries (connection_id, name, query) 
 		 VALUES (?, ?, ?)`,
 		connectionID, name, query,
@@ -94,24 +87,24 @@ func (s *SavedQueriesStore) Create(connectionID int64, name, query string) (*Sav
 		return nil, err
 	}
 
-	return s.GetByID(id)
+	return r.GetByID(id)
 }
 
-func (s *SavedQueriesStore) Update(id int64, name, query string) (*SavedQuery, error) {
-	_, err := s.db.Exec(
+func (r *SavedQueryRepository) Update(id int64, name, query string) (*entity.SavedQuery, error) {
+	_, err := r.db.Exec(
 		`UPDATE saved_queries 
-		 SET name = ?, query = ?, updated_at = CURRENT_TIMESTAMP 
+		 SET name = ?, query = ?, updated_at = ? 
 		 WHERE id = ?`,
-		name, query, id,
+		name, query, time.Now(), id,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.GetByID(id)
+	return r.GetByID(id)
 }
 
-func (s *SavedQueriesStore) Delete(id int64) error {
-	_, err := s.db.Exec(`DELETE FROM saved_queries WHERE id = ?`, id)
+func (r *SavedQueryRepository) Delete(id int64) error {
+	_, err := r.db.Exec(`DELETE FROM saved_queries WHERE id = ?`, id)
 	return err
 }

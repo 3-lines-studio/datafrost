@@ -1,4 +1,4 @@
-package adapters
+package database
 
 import (
 	"context"
@@ -6,23 +6,23 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/3-lines-studio/datafrost/internal/models"
+	"github.com/3-lines-studio/datafrost/internal/core/entity"
 
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
 
-type TursoAdapter struct {
+type tursoAdapter struct {
 	conn *sql.DB
 }
 
-func NewTursoAdapterRegistration() models.AdapterRegistration {
-	return models.AdapterRegistration{
-		Info: models.AdapterInfo{
+func newTursoAdapterRegistration() entity.AdapterRegistration {
+	return entity.AdapterRegistration{
+		Info: entity.AdapterInfo{
 			Type:        "turso",
 			Name:        "Turso",
 			Description: "Turso (libSQL) SQLite database",
-			UIConfig: models.UIConfig{
-				Fields: []models.FieldConfig{
+			UIConfig: entity.UIConfig{
+				Fields: []entity.FieldConfig{
 					{
 						Key:         "url",
 						Label:       "Database URL",
@@ -41,13 +41,13 @@ func NewTursoAdapterRegistration() models.AdapterRegistration {
 				SupportsFile: false,
 			},
 		},
-		Factory: func() models.DatabaseAdapter {
-			return &TursoAdapter{}
+		Factory: func() entity.DatabaseAdapter {
+			return &tursoAdapter{}
 		},
 	}
 }
 
-func (a *TursoAdapter) Connect(credentials map[string]any) error {
+func (a *tursoAdapter) Connect(credentials map[string]any) error {
 	url, ok := credentials["url"].(string)
 	if !ok || url == "" {
 		return fmt.Errorf("url is required")
@@ -74,21 +74,21 @@ func (a *TursoAdapter) Connect(credentials map[string]any) error {
 	return nil
 }
 
-func (a *TursoAdapter) Close() error {
+func (a *tursoAdapter) Close() error {
 	if a.conn != nil {
 		return a.conn.Close()
 	}
 	return nil
 }
 
-func (a *TursoAdapter) Ping() error {
+func (a *tursoAdapter) Ping() error {
 	if a.conn == nil {
 		return fmt.Errorf("not connected")
 	}
 	return a.conn.Ping()
 }
 
-func (a *TursoAdapter) ListTables() ([]models.TableInfo, error) {
+func (a *tursoAdapter) ListTables() ([]entity.TableInfo, error) {
 	rows, err := a.conn.Query(
 		"SELECT name, type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%' ORDER BY name",
 	)
@@ -97,9 +97,9 @@ func (a *TursoAdapter) ListTables() ([]models.TableInfo, error) {
 	}
 	defer rows.Close()
 
-	var tables []models.TableInfo
+	var tables []entity.TableInfo
 	for rows.Next() {
-		var t models.TableInfo
+		var t entity.TableInfo
 		if err := rows.Scan(&t.Name, &t.Type); err != nil {
 			return nil, fmt.Errorf("failed to scan table: %w", err)
 		}
@@ -109,7 +109,7 @@ func (a *TursoAdapter) ListTables() ([]models.TableInfo, error) {
 	return tables, rows.Err()
 }
 
-func (a *TursoAdapter) GetTableData(tableName string, limit, offset int, filters []models.Filter) (*models.QueryResult, error) {
+func (a *tursoAdapter) GetTableData(tableName string, limit, offset int, filters []entity.Filter) (*entity.QueryResult, error) {
 	whereClause, args := buildTursoWhereClause(filters)
 
 	count, err := a.getFilteredTableCount(tableName, whereClause, args)
@@ -134,11 +134,11 @@ func (a *TursoAdapter) GetTableData(tableName string, limit, offset int, filters
 	return result, nil
 }
 
-func (a *TursoAdapter) ExecuteQuery(query string) (*models.QueryResult, error) {
+func (a *tursoAdapter) ExecuteQuery(query string) (*entity.QueryResult, error) {
 	return a.executeQueryWithArgs(query, nil)
 }
 
-func (a *TursoAdapter) executeQueryWithArgs(query string, args []any) (*models.QueryResult, error) {
+func (a *tursoAdapter) executeQueryWithArgs(query string, args []any) (*entity.QueryResult, error) {
 	upperQuery := strings.ToUpper(strings.TrimSpace(query))
 	isSelect := strings.HasPrefix(upperQuery, "SELECT") || strings.HasPrefix(upperQuery, "WITH") || strings.HasPrefix(upperQuery, "PRAGMA")
 
@@ -177,7 +177,7 @@ func (a *TursoAdapter) executeQueryWithArgs(query string, args []any) (*models.Q
 		return nil, fmt.Errorf("row iteration error: %w", err)
 	}
 
-	return &models.QueryResult{
+	return &entity.QueryResult{
 		Columns: columns,
 		Rows:    resultRows,
 		Count:   len(resultRows),
@@ -187,7 +187,7 @@ func (a *TursoAdapter) executeQueryWithArgs(query string, args []any) (*models.Q
 	}, nil
 }
 
-func (a *TursoAdapter) getFilteredTableCount(tableName, whereClause string, args []any) (int, error) {
+func (a *tursoAdapter) getFilteredTableCount(tableName, whereClause string, args []any) (int, error) {
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM \"%s\"", tableName)
 	if whereClause != "" {
 		countQuery += " WHERE " + whereClause
@@ -200,8 +200,8 @@ func (a *TursoAdapter) getFilteredTableCount(tableName, whereClause string, args
 	return count, nil
 }
 
-func (a *TursoAdapter) GetTableSchema(tableName string) (*models.TableSchema, error) {
-	schema := &models.TableSchema{
+func (a *tursoAdapter) GetTableSchema(tableName string) (*entity.TableSchema, error) {
+	schema := &entity.TableSchema{
 		TableName: tableName,
 	}
 
@@ -213,9 +213,9 @@ func (a *TursoAdapter) GetTableSchema(tableName string) (*models.TableSchema, er
 	}
 	defer columnRows.Close()
 
-	var columns []models.ColumnInfo
+	var columns []entity.ColumnInfo
 	for columnRows.Next() {
-		var col models.ColumnInfo
+		var col entity.ColumnInfo
 		var cid int
 		var notNull int
 		var pk int
@@ -241,7 +241,7 @@ func (a *TursoAdapter) GetTableSchema(tableName string) (*models.TableSchema, er
 	}
 	defer indexListRows.Close()
 
-	var indexes []models.IndexInfo
+	var indexes []entity.IndexInfo
 	for indexListRows.Next() {
 		var seq int
 		var indexName string
@@ -253,7 +253,7 @@ func (a *TursoAdapter) GetTableSchema(tableName string) (*models.TableSchema, er
 			return nil, fmt.Errorf("failed to scan index list: %w", err)
 		}
 
-		idx := models.IndexInfo{
+		idx := entity.IndexInfo{
 			Name:   indexName,
 			Unique: unique == 1,
 		}
@@ -283,7 +283,7 @@ func (a *TursoAdapter) GetTableSchema(tableName string) (*models.TableSchema, er
 	return schema, nil
 }
 
-func buildTursoWhereClause(filters []models.Filter) (string, []any) {
+func buildTursoWhereClause(filters []entity.Filter) (string, []any) {
 	if len(filters) == 0 {
 		return "", nil
 	}

@@ -1,30 +1,30 @@
-package adapters
+package database
 
 import (
 	"context"
 	"fmt"
 	"strings"
 
-	"github.com/3-lines-studio/datafrost/internal/models"
+	"github.com/3-lines-studio/datafrost/internal/core/entity"
 
 	"cloud.google.com/go/bigquery"
 	"google.golang.org/api/option"
 )
 
-type BigQueryAdapter struct {
+type bigQueryAdapter struct {
 	client    *bigquery.Client
 	projectID string
 	dataset   string
 }
 
-func NewBigQueryAdapterRegistration() models.AdapterRegistration {
-	return models.AdapterRegistration{
-		Info: models.AdapterInfo{
+func newBigQueryAdapterRegistration() entity.AdapterRegistration {
+	return entity.AdapterRegistration{
+		Info: entity.AdapterInfo{
 			Type:        "bigquery",
 			Name:        "BigQuery",
 			Description: "Google BigQuery database",
-			UIConfig: models.UIConfig{
-				Fields: []models.FieldConfig{
+			UIConfig: entity.UIConfig{
+				Fields: []entity.FieldConfig{
 					{
 						Key:         "project_id",
 						Label:       "Project ID",
@@ -51,13 +51,13 @@ func NewBigQueryAdapterRegistration() models.AdapterRegistration {
 				FileTypes:    []string{".json"},
 			},
 		},
-		Factory: func() models.DatabaseAdapter {
-			return &BigQueryAdapter{}
+		Factory: func() entity.DatabaseAdapter {
+			return &bigQueryAdapter{}
 		},
 	}
 }
 
-func (a *BigQueryAdapter) Connect(credentials map[string]any) error {
+func (a *bigQueryAdapter) Connect(credentials map[string]any) error {
 	projectID, ok := credentials["project_id"].(string)
 	if !ok || projectID == "" {
 		return fmt.Errorf("project_id is required")
@@ -85,14 +85,14 @@ func (a *BigQueryAdapter) Connect(credentials map[string]any) error {
 	return nil
 }
 
-func (a *BigQueryAdapter) Close() error {
+func (a *bigQueryAdapter) Close() error {
 	if a.client != nil {
 		return a.client.Close()
 	}
 	return nil
 }
 
-func (a *BigQueryAdapter) Ping() error {
+func (a *bigQueryAdapter) Ping() error {
 	if a.client == nil {
 		return fmt.Errorf("not connected")
 	}
@@ -105,7 +105,7 @@ func (a *BigQueryAdapter) Ping() error {
 	return nil
 }
 
-func (a *BigQueryAdapter) ListTables() ([]models.TableInfo, error) {
+func (a *bigQueryAdapter) ListTables() ([]entity.TableInfo, error) {
 	if a.client == nil {
 		return nil, fmt.Errorf("not connected")
 	}
@@ -114,14 +114,14 @@ func (a *BigQueryAdapter) ListTables() ([]models.TableInfo, error) {
 	dataset := a.client.Dataset(a.dataset)
 
 	it := dataset.Tables(ctx)
-	var tables []models.TableInfo
+	var tables []entity.TableInfo
 
 	for {
 		table, err := it.Next()
 		if err != nil {
 			break
 		}
-		tables = append(tables, models.TableInfo{
+		tables = append(tables, entity.TableInfo{
 			Name: table.TableID,
 			Type: "table",
 		})
@@ -130,7 +130,7 @@ func (a *BigQueryAdapter) ListTables() ([]models.TableInfo, error) {
 	return tables, nil
 }
 
-func (a *BigQueryAdapter) GetTableData(tableName string, limit, offset int, filters []models.Filter) (*models.QueryResult, error) {
+func (a *bigQueryAdapter) GetTableData(tableName string, limit, offset int, filters []entity.Filter) (*entity.QueryResult, error) {
 	if a.client == nil {
 		return nil, fmt.Errorf("not connected")
 	}
@@ -182,7 +182,7 @@ func (a *BigQueryAdapter) GetTableData(tableName string, limit, offset int, filt
 	return result, nil
 }
 
-func (a *BigQueryAdapter) ExecuteQuery(query string) (*models.QueryResult, error) {
+func (a *bigQueryAdapter) ExecuteQuery(query string) (*entity.QueryResult, error) {
 	if a.client == nil {
 		return nil, fmt.Errorf("not connected")
 	}
@@ -197,7 +197,7 @@ func (a *BigQueryAdapter) ExecuteQuery(query string) (*models.QueryResult, error
 	return a.executeQueryWithCount(query)
 }
 
-func (a *BigQueryAdapter) executeQueryWithCount(query string) (*models.QueryResult, error) {
+func (a *bigQueryAdapter) executeQueryWithCount(query string) (*entity.QueryResult, error) {
 	ctx := context.Background()
 	q := a.client.Query(query)
 	it, err := q.Read(ctx)
@@ -230,7 +230,7 @@ func (a *BigQueryAdapter) executeQueryWithCount(query string) (*models.QueryResu
 		columns = a.getFallbackColumns(ctx, query, resultRows)
 	}
 
-	return &models.QueryResult{
+	return &entity.QueryResult{
 		Columns: columns,
 		Rows:    resultRows,
 		Count:   len(resultRows),
@@ -261,7 +261,7 @@ func convertBigQueryValue(val bigquery.Value) any {
 	}
 }
 
-func buildBigQueryWhereClause(filters []models.Filter) (string, []any) {
+func buildBigQueryWhereClause(filters []entity.Filter) (string, []any) {
 	if len(filters) == 0 {
 		return "", nil
 	}
@@ -305,7 +305,7 @@ func buildBigQueryWhereClause(filters []models.Filter) (string, []any) {
 	return strings.Join(conditions, " AND "), args
 }
 
-func (a *BigQueryAdapter) getFallbackColumns(ctx context.Context, query string, resultRows [][]any) []string {
+func (a *bigQueryAdapter) getFallbackColumns(ctx context.Context, query string, resultRows [][]any) []string {
 	tableName := extractTableNameFromQuery(query)
 	if tableName != "" {
 		columns, err := a.getColumnsFromInfoSchema(ctx, tableName)
@@ -358,7 +358,7 @@ func extractTableNameFromQuery(query string) string {
 	return ""
 }
 
-func (a *BigQueryAdapter) getColumnsFromInfoSchema(ctx context.Context, tableName string) ([]string, error) {
+func (a *bigQueryAdapter) getColumnsFromInfoSchema(ctx context.Context, tableName string) ([]string, error) {
 	infoQuery := fmt.Sprintf(
 		"SELECT column_name FROM `%s.%s.INFORMATION_SCHEMA.COLUMNS` WHERE table_name = '%s' ORDER BY ordinal_position",
 		a.projectID, a.dataset, tableName,
@@ -385,7 +385,7 @@ func (a *BigQueryAdapter) getColumnsFromInfoSchema(ctx context.Context, tableNam
 	return columns, nil
 }
 
-func (a *BigQueryAdapter) GetTableSchema(tableName string) (*models.TableSchema, error) {
+func (a *bigQueryAdapter) GetTableSchema(tableName string) (*entity.TableSchema, error) {
 	if a.client == nil {
 		return nil, fmt.Errorf("not connected")
 	}
@@ -398,16 +398,16 @@ func (a *BigQueryAdapter) GetTableSchema(tableName string) (*models.TableSchema,
 		return nil, fmt.Errorf("failed to get table metadata: %w", err)
 	}
 
-	var columns []models.ColumnInfo
+	var columns []entity.ColumnInfo
 	for _, field := range metadata.Schema {
-		columns = append(columns, models.ColumnInfo{
+		columns = append(columns, entity.ColumnInfo{
 			Name:     field.Name,
 			Type:     string(field.Type),
 			Nullable: !field.Required,
 		})
 	}
 
-	return &models.TableSchema{
+	return &entity.TableSchema{
 		TableName: tableName,
 		Columns:   columns,
 	}, nil
