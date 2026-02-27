@@ -57,6 +57,62 @@ func (h *TablesHandler) List(w http.ResponseWriter, r *http.Request) {
 	JSONResponse(w, http.StatusOK, tables)
 }
 
+func (h *TablesHandler) Tree(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		JSONError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+
+	conn, err := h.store.GetByID(id)
+	if err != nil {
+		JSONError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if conn == nil {
+		JSONError(w, http.StatusNotFound, "connection not found")
+		return
+	}
+
+	adapter, err := h.cache.Get(conn.ID, conn.Type, conn.Credentials)
+	if err != nil {
+		JSONError(w, http.StatusBadRequest, "failed to connect: "+err.Error())
+		return
+	}
+
+	if treeLister, ok := adapter.(adapters.TreeLister); ok {
+		nodes, err := treeLister.ListTree()
+		if err != nil {
+			JSONError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		JSONResponse(w, http.StatusOK, nodes)
+		return
+	}
+
+	// Fallback: wrap flat table list into a single schema node for compatibility.
+	tables, err := adapter.ListTables()
+	if err != nil {
+		JSONError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	children := make([]models.TreeNode, 0, len(tables))
+	for _, t := range tables {
+		children = append(children, models.TreeNode{Name: t.Name, Type: t.Type, FullName: t.FullName})
+	}
+
+	JSONResponse(w, http.StatusOK, []models.TreeNode{
+		{
+			Name:     "tables",
+			Type:     "schema",
+			FullName: "tables",
+			Children: children,
+		},
+	})
+}
+
 func (h *TablesHandler) GetData(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)

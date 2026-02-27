@@ -43,8 +43,16 @@ type TestConnectionRequest struct {
 }
 
 type TableInfo struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	FullName string `json:"full_name,omitempty"`
+}
+
+type TreeNode struct {
+	Name     string     `json:"name"`
+	Type     string     `json:"type"`
+	FullName string     `json:"full_name,omitempty"`
+	Children []TreeNode `json:"children,omitempty"`
 }
 
 type QueryResult struct {

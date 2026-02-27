@@ -1,14 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
-  ConnectionsResponse,
-  QueryResult,
-  TableInfo,
-  SavedQuery,
-  ColumnFilter,
-  AdapterInfo,
-  CreateConnectionRequest,
-  UpdateConnectionRequest,
-  TestConnectionRequest,
+	ConnectionsResponse,
+	QueryResult,
+	TableInfo,
+	TreeNode,
+	SavedQuery,
+	ColumnFilter,
+	AdapterInfo,
+	CreateConnectionRequest,
+	UpdateConnectionRequest,
+	TestConnectionRequest,
   TableSchema,
 } from "@/types";
 
@@ -30,6 +31,12 @@ const fetchTables = async (connectionId: number): Promise<TableInfo[]> => {
   const res = await fetch(`${API_BASE}/api/connections/${connectionId}/tables`);
   if (!res.ok) throw new Error("Failed to fetch tables");
   return res.json();
+};
+
+const fetchTree = async (connectionId: number): Promise<TreeNode[]> => {
+	const res = await fetch(`${API_BASE}/api/connections/${connectionId}/tree`);
+	if (!res.ok) throw new Error("Failed to fetch metadata tree");
+	return res.json();
 };
 
 const fetchTableData = async (
@@ -150,6 +157,14 @@ export function useTablesQuery(connectionId: number | null) {
     queryFn: () => fetchTables(connectionId!),
     enabled: !!connectionId,
   });
+}
+
+export function useTreeQuery(connectionId: number | null) {
+	return useQuery({
+		queryKey: ["tree", connectionId],
+		queryFn: () => fetchTree(connectionId!),
+		enabled: !!connectionId,
+	});
 }
 
 export function useTableDataQuery(

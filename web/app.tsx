@@ -23,7 +23,7 @@ import {
 import {
   useConnectionsQuery,
   useAdaptersQuery,
-  useTablesQuery,
+  useTreeQuery,
   useTableDataQuery,
   useExecuteQueryMutation,
   useCreateConnectionMutation,
@@ -145,8 +145,8 @@ function PageContent() {
   const { data: connectionsData, isLoading: connectionsLoading } =
     useConnectionsQuery();
   const { data: adapters, isLoading: adaptersLoading } = useAdaptersQuery();
-  const { data: tables, isLoading: tablesLoading } =
-    useTablesQuery(selectedConnection);
+  const { data: tree, isLoading: treeLoading } =
+    useTreeQuery(selectedConnection);
   const executeMutation = useExecuteQueryMutation(selectedConnection);
   const createMutation = useCreateConnectionMutation();
   const deleteMutation = useDeleteConnectionMutation();
@@ -385,6 +385,10 @@ function PageContent() {
   const handleSelectTable = (name: string) => {
     if (!selectedConnection) return;
 
+    const displayName = name.includes(".")
+      ? name.substring(name.lastIndexOf(".") + 1)
+      : name;
+
     const existingTab = tabs.find(
       (t) =>
         t.type === "table" &&
@@ -400,7 +404,7 @@ function PageContent() {
     const newTab: Tab = {
       id: crypto.randomUUID(),
       type: "table",
-      title: name,
+      title: displayName,
       connectionId: selectedConnection,
       tableName: name,
     };
@@ -709,7 +713,7 @@ function PageContent() {
       return (
         <TableTab
           result={currentTabResult?.result || null}
-          loading={currentTabResult?.loading || tablesLoading}
+          loading={currentTabResult?.loading || false}
           error={currentTabResult?.error || null}
           filters={activeTab.filters}
           onFiltersChange={(filters) => setTabFilters(activeTab.id, filters)}
@@ -764,8 +768,8 @@ function PageContent() {
           >
             <Sidebar
               connections={connections}
-              tables={tables || []}
-              tablesLoading={tablesLoading}
+              tree={tree || []}
+              treeLoading={treeLoading}
               savedQueries={savedQueriesData?.queries || []}
               savedQueriesLoading={savedQueriesLoading}
               selectedConnection={selectedConnection}
