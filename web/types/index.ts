@@ -9,6 +9,14 @@ export interface Connection {
 export interface TableInfo {
   name: string;
   type: string;
+  full_name?: string;
+}
+
+export interface TreeNode {
+  name: string;
+  type: string;
+  full_name?: string;
+  children?: TreeNode[];
 }
 
 export interface QueryResult {

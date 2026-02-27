@@ -89,6 +89,7 @@ func main() {
 				r.Put("/", connectionsHandler.Update)
 				r.Post("/select", connectionsHandler.SetLastConnected)
 				r.Post("/test", connectionsHandler.TestExisting)
+				r.Get("/tree", tablesHandler.Tree)
 				r.Get("/tables", tablesHandler.List)
 				r.Get("/tables/{name}", tablesHandler.GetData)
 				r.Post("/query", queryHandler.Execute)

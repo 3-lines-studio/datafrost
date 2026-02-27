@@ -1,16 +1,19 @@
+import { useState } from "react";
 import {
-  Database,
-  Plus,
-  Trash2,
-  Pencil,
-  Activity,
-  ChevronRight,
-  ChevronDown,
-  Table,
-  Sun,
-  Moon,
-  MoreVertical,
-  Loader2,
+	Database,
+	Layers,
+	Plus,
+	Trash2,
+	Pencil,
+	Activity,
+	ChevronRight,
+	ChevronDown,
+	Table,
+	Eye,
+	Sun,
+	Moon,
+	MoreVertical,
+	Loader2,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import {
@@ -20,13 +23,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import type { Connection, TableInfo, SavedQuery } from "@/types";
+import type { Connection, SavedQuery, TreeNode } from "@/types";
 import { SavedQueriesSection } from "../queries/saved-queries-section";
 
 interface SidebarProps {
   connections: Connection[];
-  tables: TableInfo[];
-  tablesLoading: boolean;
+  tree: TreeNode[];
+  treeLoading: boolean;
   savedQueries: SavedQuery[];
   savedQueriesLoading: boolean;
   selectedConnection: number | null;
@@ -48,8 +51,8 @@ interface SidebarProps {
 
 export function Sidebar({
   connections,
-  tables,
-  tablesLoading,
+  tree,
+  treeLoading,
   savedQueries,
   savedQueriesLoading,
   selectedConnection,
@@ -68,6 +71,63 @@ export function Sidebar({
   onDeleteSavedQuery,
   onToggleTheme,
 }: SidebarProps) {
+	const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+	const toggleNode = (key: string) => {
+		setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
+	};
+
+	const renderTree = (nodes: TreeNode[], prefix: string = "") => {
+		return nodes.map((node) => {
+			const key = `${prefix}${node.full_name || node.name}`;
+			const hasChildren = node.children && node.children.length > 0;
+			const isOpen = expanded[key];
+			const isLeaf = !hasChildren;
+			const Icon =
+				node.type === "database"
+					? Database
+					: node.type === "schema"
+						? Layers
+						: node.type === "view"
+							? Eye
+							: Table;
+			return (
+				<div key={key} className="mt-1">
+					<div
+						onClick={() => {
+							if (isLeaf) {
+								onSelectTable(node.full_name || node.name);
+							} else {
+								toggleNode(key);
+							}
+						}}
+						className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-sm hover:bg-gray-100 dark:hover:bg-gray-900"
+					>
+					{hasChildren ? (
+						isOpen ? (
+							<ChevronDown className="h-3.5 w-3.5 text-gray-500" />
+						) : (
+							<ChevronRight className="h-3.5 w-3.5 text-gray-500" />
+						)
+					) : (
+						<span className="h-3.5 w-3.5" />
+					)}
+					<Icon className="h-3.5 w-3.5 text-gray-500" />
+						<span className="truncate flex-1">{node.name}</span>
+						{node.type === "view" && (
+							<span className="text-[10px] uppercase text-gray-500">view</span>
+						)}
+					</div>
+					{hasChildren && isOpen && (
+						<div className="ml-4 pl-2 border-l border-gray-200 dark:border-gray-800">
+							{renderTree(node.children!, `${key}.`)}
+						</div>
+					)}
+				</div>
+			);
+		});
+	};
+
   return (
     <div className="h-full border-r border-gray-200 dark:border-gray-800 flex flex-col bg-gray-50 dark:bg-gray-950">
       <div className="px-2 border-b border-gray-200 dark:border-gray-800">
@@ -183,22 +243,13 @@ export function Sidebar({
 
                 {selectedConnection === conn.id && (
                   <>
-                    {tablesLoading ? (
+                    {treeLoading ? (
                       <div className="mt-2 flex items-center justify-center py-4">
                         <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
                       </div>
-                    ) : tables?.length > 0 ? (
+                    ) : tree?.length > 0 ? (
                       <div className="mt-1 space-y-1">
-                        {tables.map((table) => (
-                          <div
-                            key={table.name}
-                            onClick={() => onSelectTable(table.name)}
-                            className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-sm hover:bg-gray-100 dark:hover:bg-gray-900"
-                          >
-                            <Table className="h-3.5 w-3.5 text-gray-500" />
-                            <span className="truncate">{table.name}</span>
-                          </div>
-                        ))}
+                        {renderTree(tree)}
                       </div>
                     ) : null}
                     <SavedQueriesSection

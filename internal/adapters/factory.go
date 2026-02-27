@@ -19,6 +19,7 @@ func NewFactory() *Factory {
 	factory.Register(NewTursoAdapterRegistration())
 	factory.Register(NewPostgresAdapterRegistration())
 	factory.Register(NewBigQueryAdapterRegistration())
+	factory.Register(NewSnowflakeAdapterRegistration())
 
 	return factory
 }
