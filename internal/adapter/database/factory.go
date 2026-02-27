@@ -15,6 +15,7 @@ func NewFactory() *Factory {
 		adapters: make(map[string]entity.AdapterRegistration),
 	}
 
+	factory.Register(newSQLiteAdapterRegistration())
 	factory.Register(newTursoAdapterRegistration())
 	factory.Register(newPostgresAdapterRegistration())
 	factory.Register(newBigQueryAdapterRegistration())

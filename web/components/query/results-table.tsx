@@ -1,6 +1,13 @@
-import { useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Copy } from "lucide-react";
+import { useRef } from "react";
+import { Button } from "../ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -9,13 +16,6 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
-import { Button } from "../ui/button";
 
 import type { QueryResult } from "@/types";
 
@@ -65,10 +65,12 @@ function VirtualTable({
   result,
   onPageChange,
   onCopy,
+  loading,
 }: {
   result: QueryResult;
   onPageChange?: (page: number) => void;
   onCopy?: (format: "csv" | "json") => void;
+  loading?: boolean;
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -228,6 +230,7 @@ export function ResultsTable({
         result={result}
         onPageChange={onPageChange}
         onCopy={onCopy}
+        loading={loading}
       />
     </div>
   );

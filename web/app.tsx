@@ -1,18 +1,19 @@
 import "@/app.css";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Toaster } from "@/components/ui/sonner";
-import { toast } from "sonner";
-import { Sidebar } from "@/components/layout/sidebar";
 import { ConnectionDialog } from "@/components/connections/connection-dialog";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { Sidebar } from "@/components/layout/sidebar";
+import { RenameQueryDialog } from "@/components/queries/rename-query-dialog";
+import { SaveQueryDialog } from "@/components/queries/save-query-dialog";
+import { TableSchemaView } from "@/components/query/table-schema-view";
+import { QueryTab } from "@/components/tabs/query-tab";
 import { TabBar } from "@/components/tabs/tab-bar";
 import { TableTab } from "@/components/tabs/table-tab";
-import { QueryTab } from "@/components/tabs/query-tab";
-import { TableSchemaView } from "@/components/query/table-schema-view";
-import { SaveQueryDialog } from "@/components/queries/save-query-dialog";
-import { RenameQueryDialog } from "@/components/queries/rename-query-dialog";
-import { ErrorBoundary } from "@/components/error-boundary";
+import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/lib/query-provider";
 import { useAppStore } from "@/lib/store";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import {
@@ -21,30 +22,30 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import {
-  useConnectionsQuery,
   useAdaptersQuery,
-  useTablesQuery,
-  useTableDataQuery,
-  useExecuteQueryMutation,
+  useConnectionsQuery,
   useCreateConnectionMutation,
+  useCreateSavedQueryMutation,
   useDeleteConnectionMutation,
-  useSetLastConnectedMutation,
-  useThemeQuery,
-  useUpdateThemeMutation,
-  useUpdateConnectionMutation,
-  useTestConnectionMutation,
-  useTestExistingConnectionMutation,
+  useDeleteSavedQueryMutation,
+  useExecuteQueryMutation,
   useLayoutQuery,
   useSaveLayoutMutation,
-  useTabsQuery,
   useSaveTabsMutation,
   useSavedQueriesQuery,
-  useCreateSavedQueryMutation,
-  useUpdateSavedQueryMutation,
-  useDeleteSavedQueryMutation,
+  useSetLastConnectedMutation,
+  useTableDataQuery,
   useTableSchemaQuery,
+  useTablesQuery,
+  useTabsQuery,
+  useTestConnectionMutation,
+  useTestExistingConnectionMutation,
+  useThemeQuery,
+  useUpdateConnectionMutation,
+  useUpdateSavedQueryMutation,
+  useUpdateThemeMutation,
 } from "@/lib/hooks";
-import type { Connection, QueryResult, Tab, SavedQuery } from "@/types";
+import type { Connection, QueryResult, SavedQuery, Tab } from "@/types";
 
 interface AlertState {
   open: boolean;
@@ -112,6 +113,8 @@ function PageContent() {
   const [schemaResults, setSchemaResults] = useState<
     Record<string, { schema: any; loading: boolean; error: string | null }>
   >({});
+
+  const queryClient = useQueryClient();
   const [saveQueryDialogOpen, setSaveQueryDialogOpen] = useState(false);
   const [renameQueryDialogOpen, setRenameQueryDialogOpen] = useState(false);
   const [queryToRename, setQueryToRename] = useState<SavedQuery | null>(null);
@@ -503,6 +506,16 @@ function PageContent() {
     }
   };
 
+  const handleRefreshTable = useCallback(() => {
+    if (!selectedConnection || !activeTab || activeTab.type !== "table") {
+      return;
+    }
+
+    queryClient.invalidateQueries({
+      queryKey: ["tableData", selectedConnection, activeTab.tableName],
+    });
+  }, [selectedConnection, activeTab, queryClient]);
+
   const handleSaveConnection = async (
     name: string,
     type: string,
@@ -802,6 +815,7 @@ function PageContent() {
                 onTabClick={handleTabClick}
                 onTabClose={handleTabClose}
                 onNewQueryTab={handleNewQueryTab}
+                onRefresh={handleRefreshTable}
               />
               <div className="flex-1 min-h-0">{renderTabContent()}</div>
             </div>

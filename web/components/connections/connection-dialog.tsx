@@ -1,9 +1,10 @@
+import type { AdapterInfo, Connection, FieldConfig, UIMode } from "@/types";
+import { Check, Eye, EyeOff, FileJson, Loader2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Textarea } from "../ui/textarea";
 import {
   Select,
   SelectContent,
@@ -11,8 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { Eye, EyeOff, Loader2, Check, X, FileJson } from "lucide-react";
-import type { Connection, AdapterInfo, FieldConfig, UIMode } from "@/types";
+import { Textarea } from "../ui/textarea";
 
 interface ConnectionDialogProps {
   open: boolean;
@@ -126,9 +126,16 @@ export function ConnectionDialog({
   const handleFileUpload = (
     event: React.ChangeEvent<HTMLInputElement>,
     fieldKey: string,
+    mode: "content" | "path" = "content",
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    if (mode === "path") {
+      handleFieldChange(fieldKey, file.name);
+      setFileError(null);
+      return;
+    }
 
     if (!file.name.endsWith(".json")) {
       setFileError("Please upload a JSON file");
@@ -342,7 +349,7 @@ export function ConnectionDialog({
                           (f: FieldConfig) => f.key === "credentials",
                         );
                         if (credField) {
-                          handleFileUpload(e, credField.key);
+                          handleFileUpload(e, credField.key, "content");
                         }
                       }}
                       className="hidden"

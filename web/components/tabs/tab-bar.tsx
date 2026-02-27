@@ -1,6 +1,6 @@
-import { X, Plus, Table, FileCode, Loader2 } from "lucide-react";
-import { Button } from "../ui/button";
 import type { Tab, TabType } from "@/types";
+import { FileCode, Loader2, Plus, RefreshCw, Table, X } from "lucide-react";
+import { Button } from "../ui/button";
 
 interface TabBarProps {
   tabs: Tab[];
@@ -10,6 +10,7 @@ interface TabBarProps {
   onTabClick: (id: string) => void;
   onTabClose: (id: string) => void;
   onNewQueryTab: () => void;
+  onRefresh?: () => void;
 }
 
 function getTabIcon(type: TabType) {
@@ -27,7 +28,10 @@ export function TabBar({
   onTabClick,
   onTabClose,
   onNewQueryTab,
+  onRefresh,
 }: TabBarProps) {
+  const activeTab = tabs.find((tab) => tab.id === activeTabId);
+
   return (
     <div className="flex items-center border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 h-9">
       <div className="flex-1 overflow-x-auto scrollbar-hide">
@@ -85,7 +89,18 @@ export function TabBar({
       </div>
 
       {hasConnection && (
-        <div className="flex items-center px-2 border-l border-gray-200 dark:border-gray-800">
+        <div className="flex items-center px-2 border-l border-gray-200 dark:border-gray-800 gap-1">
+          {activeTab?.type === "table" && onRefresh && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onRefresh}
+              className="h-7 w-7"
+              title="Refresh"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"

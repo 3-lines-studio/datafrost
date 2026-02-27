@@ -1,18 +1,19 @@
+import type { Connection, SavedQuery, TableInfo } from "@/types";
 import {
-  Database,
-  Plus,
-  Trash2,
-  Pencil,
   Activity,
-  ChevronRight,
   ChevronDown,
-  Table,
-  Sun,
+  ChevronRight,
+  FileSearch,
+  Loader2,
   Moon,
   MoreVertical,
-  Loader2,
-  FileSearch,
+  Pencil,
+  Plus,
+  Sun,
+  Table,
+  Trash2,
 } from "lucide-react";
+import { SavedQueriesSection } from "../queries/saved-queries-section";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
@@ -21,8 +22,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import type { Connection, TableInfo, SavedQuery } from "@/types";
-import { SavedQueriesSection } from "../queries/saved-queries-section";
 
 interface SidebarProps {
   connections: Connection[];
@@ -75,18 +74,29 @@ export function Sidebar({
     <div className="h-full border-r border-gray-200 dark:border-gray-800 flex flex-col bg-gray-50 dark:bg-gray-950">
       <div className="px-2 border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center justify-between py-1">
-          <div className="flex items-center gap-2">
-            <Database className="size-4 text-gray-600 dark:text-gray-400" />
-            <span className="font-medium">Datafrost</span>
+          <span className="font-medium">Datafrost</span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleTheme}
+              className="h-7 w-7"
+            >
+              {theme === "light" ? (
+                <Moon className="h-4 w-4" />
+              ) : (
+                <Sun className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onAddConnection}
+              className="h-7 w-7"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onAddConnection}
-            className="h-7 w-7"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
         </div>
       </div>
 
@@ -250,21 +260,6 @@ export function Sidebar({
             ))
           )}
         </div>
-      </div>
-
-      <div className="p-2 border-t border-gray-200 dark:border-gray-800">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggleTheme}
-          className="h-8 w-8"
-        >
-          {theme === "light" ? (
-            <Moon className="h-4 w-4" />
-          ) : (
-            <Sun className="h-4 w-4" />
-          )}
-        </Button>
       </div>
     </div>
   );
