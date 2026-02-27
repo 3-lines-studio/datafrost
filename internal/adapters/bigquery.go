@@ -197,7 +197,6 @@ func (a *BigQueryAdapter) ExecuteQuery(query string) (*models.QueryResult, error
 	return a.executeQueryWithCount(query)
 }
 
-
 func (a *BigQueryAdapter) executeQueryWithCount(query string) (*models.QueryResult, error) {
 	ctx := context.Background()
 	q := a.client.Query(query)
@@ -384,4 +383,32 @@ func (a *BigQueryAdapter) getColumnsFromInfoSchema(ctx context.Context, tableNam
 	}
 
 	return columns, nil
+}
+
+func (a *BigQueryAdapter) GetTableSchema(tableName string) (*models.TableSchema, error) {
+	if a.client == nil {
+		return nil, fmt.Errorf("not connected")
+	}
+
+	ctx := context.Background()
+
+	table := a.client.Dataset(a.dataset).Table(tableName)
+	metadata, err := table.Metadata(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get table metadata: %w", err)
+	}
+
+	var columns []models.ColumnInfo
+	for _, field := range metadata.Schema {
+		columns = append(columns, models.ColumnInfo{
+			Name:     field.Name,
+			Type:     string(field.Type),
+			Nullable: !field.Required,
+		})
+	}
+
+	return &models.TableSchema{
+		TableName: tableName,
+		Columns:   columns,
+	}, nil
 }

@@ -9,6 +9,7 @@ type DatabaseAdapter interface {
 	GetTableData(tableName string, limit, offset int, filters []Filter) (*QueryResult, error)
 	ExecuteQuery(query string) (*QueryResult, error)
 	Ping() error
+	GetTableSchema(tableName string) (*TableSchema, error)
 }
 
 type AdapterRegistration struct {
@@ -68,6 +69,34 @@ type Filter struct {
 	Column   string `json:"column"`
 	Operator string `json:"operator"`
 	Value    string `json:"value"`
+}
+
+type TableSchema struct {
+	TableName   string           `json:"table_name"`
+	Columns     []ColumnInfo     `json:"columns"`
+	Indexes     []IndexInfo      `json:"indexes"`
+	Constraints []ConstraintInfo `json:"constraints"`
+}
+
+type ColumnInfo struct {
+	Name         string `json:"name"`
+	Type         string `json:"type"`
+	Nullable     bool   `json:"nullable"`
+	DefaultValue string `json:"default_value"`
+	IsPrimaryKey bool   `json:"is_primary_key"`
+}
+
+type IndexInfo struct {
+	Name    string   `json:"name"`
+	Unique  bool     `json:"unique"`
+	Columns []string `json:"columns"`
+}
+
+type ConstraintInfo struct {
+	Name       string `json:"name"`
+	Type       string `json:"type"`
+	Column     string `json:"column"`
+	Definition string `json:"definition"`
 }
 
 type AdapterInfo struct {

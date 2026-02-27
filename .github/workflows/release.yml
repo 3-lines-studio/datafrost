@@ -3,11 +3,11 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to build (e.g., 1.0.0)'
+        description: "Version to build (e.g., 1.0.0)"
         required: true
 
 jobs:
@@ -46,7 +46,7 @@ jobs:
 
       - name: Build Go binary
         run: |
-          go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o datafrost main.go
+          go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o datafrost .
 
       - name: Create Linux package
         run: |
@@ -75,7 +75,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -101,7 +101,7 @@ jobs:
 
       - name: Build ARM64 binary
         run: |
-          go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o datafrost main.go
+          go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o datafrost .
 
       - name: Create macOS package
         run: |
@@ -119,77 +119,8 @@ jobs:
           name: macos-package
           path: datafrost-macos-arm64-*.tar.gz
 
-  build-windows:
-    runs-on: windows-2022
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install Node dependencies
-        run: bun install
-
-      - name: Bifrost build
-        run: go run github.com/3-lines-studio/bifrost/cmd/build@latest main.go
-
-      - name: Set version
-        id: version
-        shell: bash
-        run: |
-          if [ "${{ github.event_name }}" == "push" ]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
-          else
-            VERSION=${{ github.event.inputs.version }}
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Building version: $VERSION"
-
-      - name: Build Windows binary
-        shell: bash
-        run: |
-          go build -ldflags="-X main.version=${{ steps.version.outputs.VERSION }}" -o datafrost.exe main.go
-
-      - name: Create Windows package
-        shell: bash
-        run: |
-          VERSION="${{ steps.version.outputs.VERSION }}"
-          PKG_DIR="datafrost-windows-v${VERSION}"
-          mkdir -p "$PKG_DIR"
-          cp datafrost.exe "$PKG_DIR/"
-          echo "Datafrost ${VERSION} - Database Management GUI" > "$PKG_DIR/README.txt"
-          echo "" >> "$PKG_DIR/README.txt"
-          echo "PREREQUISITES:" >> "$PKG_DIR/README.txt"
-          echo "This application requires Windows 10 or later with Microsoft Edge installed" >> "$PKG_DIR/README.txt"
-          echo "(WebView2 runtime is usually preinstalled on modern Windows)." >> "$PKG_DIR/README.txt"
-          echo "" >> "$PKG_DIR/README.txt"
-          echo "INSTALLATION:" >> "$PKG_DIR/README.txt"
-          echo "1. Copy datafrost.exe to any directory" >> "$PKG_DIR/README.txt"
-          echo "2. Add that directory to your PATH (optional)" >> "$PKG_DIR/README.txt"
-          echo "3. Run datafrost.exe" >> "$PKG_DIR/README.txt"
-          echo "" >> "$PKG_DIR/README.txt"
-          echo "USAGE:" >> "$PKG_DIR/README.txt"
-          echo "Double-click datafrost.exe or run from command prompt." >> "$PKG_DIR/README.txt"
-          echo "" >> "$PKG_DIR/README.txt"
-          echo "For command line usage:" >> "$PKG_DIR/README.txt"
-          echo "  datafrost.exe --version" >> "$PKG_DIR/README.txt"
-          echo "" >> "$PKG_DIR/README.txt"
-          echo "KNOWN ISSUES:" >> "$PKG_DIR/README.txt"
-          echo "- Unsigned executable: Windows Defender may show a warning on first run." >> "$PKG_DIR/README.txt"
-          echo '  Click "More info" and "Run anyway" if you trust this application.' >> "$PKG_DIR/README.txt"
-          7z a "${PKG_DIR}.zip" "$PKG_DIR"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-package
-          path: datafrost-windows-*.zip
-
   create-release:
-    needs: [build-linux, build-macos-arm64, build-windows]
+    needs: [build-linux, build-macos-arm64]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -218,7 +149,6 @@ jobs:
           files: |
             ./artifacts/linux-package/datafrost-linux-*.tar.gz
             ./artifacts/macos-package/datafrost-macos-*.tar.gz
-            ./artifacts/windows-package/datafrost-windows-*.zip
           body: |
             ## Datafrost v${{ steps.version.outputs.VERSION }}
 
@@ -234,11 +164,6 @@ jobs:
             - Apple Silicon only (M1, M2, M3, or later)
             - Intel Macs: Build from source (see README)
             - Unsigned: Allow in System Preferences > Security on first run
-
-            **Windows**
-            - Download `datafrost-windows-v${{ steps.version.outputs.VERSION }}.zip`
-            - Extract and run `datafrost.exe`
-            - Requires: Windows 10+ with Edge (WebView2)
 
             ### Verification
 

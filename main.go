@@ -92,6 +92,7 @@ func main() {
 				r.Get("/tree", tablesHandler.Tree)
 				r.Get("/tables", tablesHandler.List)
 				r.Get("/tables/{name}", tablesHandler.GetData)
+				r.Get("/tables/{name}/schema", tablesHandler.GetSchema)
 				r.Post("/query", queryHandler.Execute)
 				r.Get("/tabs", tabsHandler.Get)
 				r.Post("/tabs", tabsHandler.Save)
@@ -146,6 +147,8 @@ func main() {
 	w.SetTitle("Datafrost")
 	w.SetSize(1200, 800, webview.HintNone)
 	w.Navigate(localURL)
+
+	setupMacEditMenu()
 
 	w.Run()
 

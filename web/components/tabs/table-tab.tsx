@@ -10,6 +10,7 @@ interface TableTabProps {
   filters?: ColumnFilter[];
   onPageChange?: (page: number) => void;
   onFiltersChange?: (filters: ColumnFilter[]) => void;
+  onCopy?: (format: "csv" | "json") => void;
 }
 
 export function TableTab({
@@ -20,6 +21,7 @@ export function TableTab({
   filters = [],
   onPageChange,
   onFiltersChange,
+  onCopy,
 }: TableTabProps) {
   const columns = result?.columns || [];
 
@@ -38,6 +40,7 @@ export function TableTab({
           loading={loading}
           error={error}
           onPageChange={onPageChange}
+          onCopy={onCopy}
         />
       </div>
     </div>

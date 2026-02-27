@@ -47,6 +47,7 @@ interface SidebarProps {
   onRenameSavedQuery: (query: SavedQuery) => void;
   onDeleteSavedQuery: (query: SavedQuery) => void;
   onToggleTheme: () => void;
+  onViewSchema?: (tableName: string) => void;
 }
 
 export function Sidebar({
@@ -70,6 +71,7 @@ export function Sidebar({
   onRenameSavedQuery,
   onDeleteSavedQuery,
   onToggleTheme,
+  onViewSchema,
 }: SidebarProps) {
 	const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 

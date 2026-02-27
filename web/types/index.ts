@@ -78,7 +78,7 @@ export interface FieldConfig {
   placeholder?: string;
 }
 
-export type TabType = "table" | "query";
+export type TabType = "table" | "query" | "schema";
 
 export interface Tab {
   id: string;
@@ -89,6 +89,7 @@ export interface Tab {
   query?: string;
   page?: number;
   filters?: ColumnFilter[];
+  schemaTableName?: string;
 }
 
 export interface SavedQuery {
@@ -117,4 +118,32 @@ export interface ColumnFilter {
   column: string;
   operator: FilterOperator;
   value: string;
+}
+
+export interface ColumnInfo {
+  name: string;
+  type: string;
+  nullable: boolean;
+  default_value: string;
+  is_primary_key: boolean;
+}
+
+export interface IndexInfo {
+  name: string;
+  unique: boolean;
+  columns: string[];
+}
+
+export interface ConstraintInfo {
+  name: string;
+  type: string;
+  column: string;
+  definition: string;
+}
+
+export interface TableSchema {
+  table_name: string;
+  columns: ColumnInfo[];
+  indexes: IndexInfo[];
+  constraints: ConstraintInfo[];
 }

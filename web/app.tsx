@@ -1,10 +1,13 @@
 import "@/app.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ConnectionDialog } from "@/components/connections/connection-dialog";
 import { TabBar } from "@/components/tabs/tab-bar";
 import { TableTab } from "@/components/tabs/table-tab";
 import { QueryTab } from "@/components/tabs/query-tab";
+import { TableSchemaView } from "@/components/query/table-schema-view";
 import { SaveQueryDialog } from "@/components/queries/save-query-dialog";
 import { RenameQueryDialog } from "@/components/queries/rename-query-dialog";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -39,6 +42,7 @@ import {
   useCreateSavedQueryMutation,
   useUpdateSavedQueryMutation,
   useDeleteSavedQueryMutation,
+  useTableSchemaQuery,
 } from "@/lib/hooks";
 import type { Connection, QueryResult, Tab, SavedQuery } from "@/types";
 
@@ -105,6 +109,9 @@ function PageContent() {
   });
 
   const [tabResults, setTabResults] = useState<Record<string, TabResult>>({});
+  const [schemaResults, setSchemaResults] = useState<
+    Record<string, { schema: any; loading: boolean; error: string | null }>
+  >({});
   const [saveQueryDialogOpen, setSaveQueryDialogOpen] = useState(false);
   const [renameQueryDialogOpen, setRenameQueryDialogOpen] = useState(false);
   const [queryToRename, setQueryToRename] = useState<SavedQuery | null>(null);
@@ -174,6 +181,28 @@ function PageContent() {
       }));
     }
   }, [tableData, activeTab, activeTabId]);
+
+  const {
+    data: schemaData,
+    isLoading: schemaLoading,
+    error: schemaError,
+  } = useTableSchemaQuery(
+    selectedConnection,
+    activeTab?.type === "schema" ? activeTab.schemaTableName || null : null,
+  );
+
+  useEffect(() => {
+    if (activeTab?.type === "schema" && activeTabId) {
+      setSchemaResults((prev) => ({
+        ...prev,
+        [activeTabId]: {
+          schema: schemaData || null,
+          loading: schemaLoading,
+          error: schemaError?.message || null,
+        },
+      }));
+    }
+  }, [schemaData, schemaLoading, schemaError, activeTab, activeTabId]);
 
   const { data: tabsData, isLoading: tabsLoading } =
     useTabsQuery(selectedConnection);
@@ -391,6 +420,93 @@ function PageContent() {
     }));
   };
 
+  const handleViewSchema = (tableName: string) => {
+    if (!selectedConnection) return;
+
+    const existingTab = tabs.find(
+      (t) =>
+        t.type === "schema" &&
+        t.connectionId === selectedConnection &&
+        t.schemaTableName === tableName,
+    );
+
+    if (existingTab) {
+      setActiveTabId(existingTab.id);
+      return;
+    }
+
+    const newTab: Tab = {
+      id: crypto.randomUUID(),
+      type: "schema",
+      title: `Schema: ${tableName}`,
+      connectionId: selectedConnection,
+      schemaTableName: tableName,
+    };
+
+    addTab(newTab);
+    setSchemaResults((prev) => ({
+      ...prev,
+      [newTab.id]: {
+        schema: null,
+        loading: true,
+        error: null,
+      },
+    }));
+  };
+
+  const handleCopy = async (format: "csv" | "json") => {
+    if (!activeTab) return;
+
+    const result = currentTabResult?.result;
+    if (!result || !result.rows || result.rows.length === 0) {
+      toast.error("No data to copy");
+      return;
+    }
+
+    try {
+      let text = "";
+
+      if (format === "csv") {
+        const headers = result.columns.join(",");
+        const rows = result.rows.map((row) =>
+          row
+            .map((cell) => {
+              if (cell === null) return "NULL";
+              const str = String(cell);
+              if (
+                str.includes(",") ||
+                str.includes("\n") ||
+                str.includes('"')
+              ) {
+                return `"${str.replace(/"/g, '""')}"`;
+              }
+              return str;
+            })
+            .join(","),
+        );
+        text = [headers, ...rows].join("\n");
+      } else {
+        const data = result.rows.map((row) => {
+          const obj: Record<string, any> = {};
+          result.columns.forEach((col, i) => {
+            obj[col] = row[i];
+          });
+          return obj;
+        });
+        text = JSON.stringify(data, null, 2);
+      }
+
+      await navigator.clipboard.writeText(text);
+      toast.success(`Copied as ${format.toUpperCase()}`, {
+        description: `${result.rows.length} rows copied to clipboard`,
+      });
+    } catch (err: any) {
+      toast.error("Failed to copy", {
+        description: err.message || "Could not copy to clipboard",
+      });
+    }
+  };
+
   const handleSaveConnection = async (
     name: string,
     type: string,
@@ -526,6 +642,11 @@ function PageContent() {
       delete newResults[id];
       return newResults;
     });
+    setSchemaResults((prev) => {
+      const newResults = { ...prev };
+      delete newResults[id];
+      return newResults;
+    });
   };
 
   useEffect(() => {
@@ -577,6 +698,7 @@ function PageContent() {
   };
 
   const currentTabResult = activeTabId ? tabResults[activeTabId] : null;
+  const currentSchemaResult = activeTabId ? schemaResults[activeTabId] : null;
 
   const renderTabContent = () => {
     if (!activeTab || !selectedConnection) {
@@ -596,6 +718,17 @@ function PageContent() {
           filters={activeTab.filters}
           onFiltersChange={(filters) => setTabFilters(activeTab.id, filters)}
           onPageChange={(page) => setTabPage(activeTab.id, page)}
+          onCopy={handleCopy}
+        />
+      );
+    }
+
+    if (activeTab.type === "schema") {
+      return (
+        <TableSchemaView
+          schema={currentSchemaResult?.schema || null}
+          loading={currentSchemaResult?.loading || false}
+          error={currentSchemaResult?.error || null}
         />
       );
     }
@@ -615,6 +748,7 @@ function PageContent() {
         loading={currentTabResult?.loading || false}
         error={currentTabResult?.error || null}
         executeLoading={executeMutation.isPending}
+        onCopy={handleCopy}
       />
     );
   };
@@ -653,6 +787,7 @@ function PageContent() {
               onRenameSavedQuery={handleRenameSavedQuery}
               onDeleteSavedQuery={handleDeleteSavedQuery}
               onToggleTheme={handleToggleTheme}
+              onViewSchema={handleViewSchema}
             />
           </ResizablePanel>
 
@@ -718,6 +853,8 @@ function PageContent() {
           type={alertState.type}
           onConfirm={alertState.onConfirm}
         />
+
+        <Toaster richColors position="top-right" />
       </div>
     </ErrorBoundary>
   );
