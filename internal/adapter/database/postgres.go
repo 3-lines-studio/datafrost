@@ -174,7 +174,7 @@ func (a *postgresAdapter) ListTables() ([]entity.TableInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tables: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var tables []entity.TableInfo
 	for rows.Next() {
@@ -230,7 +230,7 @@ func (a *postgresAdapter) executeQueryWithArgs(query string, args []any) (*entit
 	if err != nil {
 		return nil, fmt.Errorf("query failed: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	columns, err := rows.Columns()
 	if err != nil {
@@ -298,7 +298,7 @@ func (a *postgresAdapter) GetTableSchema(tableName string) (*entity.TableSchema,
 	if err != nil {
 		return nil, fmt.Errorf("failed to get columns: %w", err)
 	}
-	defer columnRows.Close()
+	defer func() { _ = columnRows.Close() }()
 
 	var columns []entity.ColumnInfo
 	for columnRows.Next() {
@@ -321,7 +321,7 @@ func (a *postgresAdapter) GetTableSchema(tableName string) (*entity.TableSchema,
 	if err != nil {
 		return nil, fmt.Errorf("failed to get primary keys: %w", err)
 	}
-	defer pkRows.Close()
+	defer func() { _ = pkRows.Close() }()
 
 	pkColumns := make(map[string]bool)
 	for pkRows.Next() {
@@ -352,7 +352,7 @@ func (a *postgresAdapter) GetTableSchema(tableName string) (*entity.TableSchema,
 	if err != nil {
 		return nil, fmt.Errorf("failed to get indexes: %w", err)
 	}
-	defer indexRows.Close()
+	defer func() { _ = indexRows.Close() }()
 
 	var indexes []entity.IndexInfo
 	for indexRows.Next() {
@@ -381,7 +381,7 @@ func (a *postgresAdapter) GetTableSchema(tableName string) (*entity.TableSchema,
 				cols = append(cols, colName)
 			}
 		}
-		indexColRows.Close()
+		_ = indexColRows.Close()
 
 		idx.Columns = cols
 		indexes = append(indexes, idx)
@@ -401,7 +401,7 @@ func (a *postgresAdapter) GetTableSchema(tableName string) (*entity.TableSchema,
 	if err != nil {
 		return nil, fmt.Errorf("failed to get constraints: %w", err)
 	}
-	defer constraintRows.Close()
+	defer func() { _ = constraintRows.Close() }()
 
 	var constraints []entity.ConstraintInfo
 	for constraintRows.Next() {

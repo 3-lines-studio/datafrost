@@ -26,7 +26,7 @@ func (r *SavedQueryRepository) ListByConnection(connectionID int64) ([]entity.Sa
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var queries []entity.SavedQuery
 	for rows.Next() {

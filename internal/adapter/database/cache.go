@@ -45,7 +45,7 @@ func (c *AdapterCache) Invalidate(id int64) {
 	defer c.mu.Unlock()
 
 	if adapter, ok := c.entries[id]; ok {
-		adapter.Close()
+		_ = adapter.Close()
 		delete(c.entries, id)
 	}
 }
@@ -55,7 +55,7 @@ func (c *AdapterCache) Close() {
 	defer c.mu.Unlock()
 
 	for id, adapter := range c.entries {
-		adapter.Close()
+		_ = adapter.Close()
 		delete(c.entries, id)
 	}
 }

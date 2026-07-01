@@ -56,7 +56,7 @@ func (f *Factory) TestConnection(adapterType string, credentials map[string]any)
 	if err != nil {
 		return err
 	}
-	defer adapter.Close()
+	defer func() { _ = adapter.Close() }()
 
 	if err := adapter.Connect(credentials); err != nil {
 		return err

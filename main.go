@@ -47,7 +47,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to recreate database: %v", err)
 		}
-		configDB.Close()
+		_ = configDB.Close()
 		fmt.Println("Database reset successfully.")
 		os.Exit(0)
 	}
@@ -56,7 +56,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize config database: %v", err)
 	}
-	defer configDB.Close()
+	defer func() { _ = configDB.Close() }()
 
 	sqlDB := configDB.DB()
 
@@ -130,7 +130,7 @@ func main() {
 		bifrostFS,
 		bifrost.Page("/", "./web/app.tsx", bifrost.WithClient()),
 	)
-	defer app.Stop()
+	defer func() { _ = app.Stop() }()
 
 	server := &http.Server{
 		Handler: app.Wrap(apiRouter),
@@ -141,7 +141,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create listener: %v", err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	localURL := fmt.Sprintf("http://%s", listener.Addr().String())
 

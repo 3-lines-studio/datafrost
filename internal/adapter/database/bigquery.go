@@ -74,7 +74,7 @@ func (a *bigQueryAdapter) Connect(credentials map[string]any) error {
 	}
 
 	ctx := context.Background()
-	client, err := bigquery.NewClient(ctx, projectID, option.WithCredentialsJSON([]byte(credJSON)))
+	client, err := bigquery.NewClient(ctx, projectID, option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(credJSON)))
 	if err != nil {
 		return fmt.Errorf("failed to create bigquery client: %w", err)
 	}

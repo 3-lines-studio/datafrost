@@ -1,0 +1,4 @@
+Name: webkit2gtk-4.0
+Description: Shim to webkit2gtk-4.1
+Version: 2.52.4
+Requires: webkit2gtk-4.1

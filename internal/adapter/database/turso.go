@@ -95,7 +95,7 @@ func (a *tursoAdapter) ListTables() ([]entity.TableInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tables: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var tables []entity.TableInfo
 	for rows.Next() {
@@ -151,7 +151,7 @@ func (a *tursoAdapter) executeQueryWithArgs(query string, args []any) (*entity.Q
 	if err != nil {
 		return nil, fmt.Errorf("query failed: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	columns, err := rows.Columns()
 	if err != nil {
@@ -211,7 +211,7 @@ func (a *tursoAdapter) GetTableSchema(tableName string) (*entity.TableSchema, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to get columns: %w", err)
 	}
-	defer columnRows.Close()
+	defer func() { _ = columnRows.Close() }()
 
 	var columns []entity.ColumnInfo
 	for columnRows.Next() {
@@ -239,7 +239,7 @@ func (a *tursoAdapter) GetTableSchema(tableName string) (*entity.TableSchema, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to get index list: %w", err)
 	}
-	defer indexListRows.Close()
+	defer func() { _ = indexListRows.Close() }()
 
 	var indexes []entity.IndexInfo
 	for indexListRows.Next() {
@@ -273,7 +273,7 @@ func (a *tursoAdapter) GetTableSchema(tableName string) (*entity.TableSchema, er
 				cols = append(cols, colName)
 			}
 		}
-		indexInfoRows.Close()
+		_ = indexInfoRows.Close()
 
 		idx.Columns = cols
 		indexes = append(indexes, idx)
